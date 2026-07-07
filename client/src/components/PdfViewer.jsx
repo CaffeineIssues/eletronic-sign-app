@@ -60,14 +60,12 @@ export default function PdfViewer({ fileUrl, renderOverlay, maxWidth = 820 }) {
   useEffect(() => {
     if (!fileUrl) return;
     let cancelled = false;
-    let pdfDoc = null;
     setPages(null);
     setError(null);
 
-    pdfjsLib
-      .getDocument(fileUrl)
-      .promise.then(async (doc) => {
-        pdfDoc = doc;
+    const loadingTask = pdfjsLib.getDocument({ url: fileUrl });
+    loadingTask.promise
+      .then(async (doc) => {
         const loaded = [];
         for (let i = 1; i <= doc.numPages; i++) {
           loaded.push(await doc.getPage(i));
@@ -82,7 +80,7 @@ export default function PdfViewer({ fileUrl, renderOverlay, maxWidth = 820 }) {
 
     return () => {
       cancelled = true;
-      if (pdfDoc) pdfDoc.destroy().catch(() => {});
+      Promise.resolve(loadingTask.destroy()).catch(() => {});
     };
   }, [fileUrl, maxWidth]);
 
