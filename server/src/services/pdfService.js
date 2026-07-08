@@ -6,6 +6,22 @@ import { db } from '../db.js';
 import { config } from '../config.js';
 import { getAuditLogs } from './auditService.js';
 
+// Characters outside Latin-1 that WinAnsi (the encoding used by the standard
+// Helvetica font) can still represent.
+const WINANSI_EXTRAS =
+  '\u20AC\u201A\u0192\u201E\u2026\u2020\u2021\u02C6\u2030\u0160\u2039\u0152\u017D' +
+  '\u2018\u2019\u201C\u201D\u2022\u2013\u2014\u02DC\u2122\u0161\u203A\u0153\u017E\u0178';
+const NON_WINANSI = new RegExp(`[^\\x20-\\x7E\\xA0-\\xFF${WINANSI_EXTRAS}]`, 'g');
+
+/**
+ * Makes arbitrary user text safe for the standard PDF fonts: NFC-normalizes
+ * (fixes decomposed accents like "c" + combining cedilla, common in filenames
+ * created on macOS) and strips anything WinAnsi cannot encode (e.g. emoji).
+ */
+function toWinAnsi(text) {
+  return String(text ?? '').normalize('NFC').replace(NON_WINANSI, '');
+}
+
 /**
  * Field positions are stored normalized (0..1) relative to the page size with
  * the origin at the top-left corner (matching the browser viewer). pdf-lib
@@ -62,7 +78,7 @@ export async function generateSignedPdf(documentId) {
       page.drawImage(image, { x: x + (w - dw) / 2, y: y + (h - dh) / 2, width: dw, height: dh });
     } else if (field.value) {
       const fontSize = Math.min(Math.max(h * 0.5, 8), 14);
-      page.drawText(String(field.value), {
+      page.drawText(toWinAnsi(field.value), {
         x: x + 2,
         y: y + (h - fontSize) / 2,
         size: fontSize,
@@ -89,7 +105,7 @@ export async function generateSignedPdf(documentId) {
   const drawLine = (text, { size = 10, font = helvetica, color = rgb(0.15, 0.15, 0.2), indent = 0, gap = 5, rightReserve = 0 } = {}) => {
     const maxWidth = A4[0] - margin * 2 - indent - rightReserve;
     // Wrap manually so cursorY advances for every rendered line.
-    const words = String(text).split(' ');
+    const words = toWinAnsi(text).split(' ');
     const lines = [];
     let current = '';
     for (const word of words) {

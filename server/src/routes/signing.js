@@ -210,20 +210,26 @@ signingRouter.post('/:token/complete', async (req, res) => {
 
   let documentCompleted = false;
   if (remaining.c === 0) {
-    logAudit({
-      documentId: document.id,
-      event: AUDIT_EVENTS.DOCUMENT_COMPLETED,
-      description: 'Todos os signatários concluíram. PDF final assinado gerado.',
-      req,
-    });
-    const signedPath = await generateSignedPdf(document.id);
-    db.prepare(
-      `UPDATE documents
-       SET status = 'completed', signed_file_path = ?, completed_at = datetime('now'), updated_at = datetime('now')
-       WHERE id = ?`
-    ).run(signedPath, document.id);
-    documentCompleted = true;
-    notifyOwnerDocumentCompleted({ owner, document }).catch(() => {});
+    try {
+      const signedPath = await generateSignedPdf(document.id);
+      db.prepare(
+        `UPDATE documents
+         SET status = 'completed', signed_file_path = ?, completed_at = datetime('now'), updated_at = datetime('now')
+         WHERE id = ?`
+      ).run(signedPath, document.id);
+      documentCompleted = true;
+      logAudit({
+        documentId: document.id,
+        event: AUDIT_EVENTS.DOCUMENT_COMPLETED,
+        description: 'Todos os signatários concluíram. PDF final assinado gerado.',
+        req,
+      });
+      notifyOwnerDocumentCompleted({ owner, document }).catch(() => {});
+    } catch (err) {
+      // The signature itself is already saved; the final PDF will be
+      // regenerated automatically when the owner opens the document.
+      console.error('[pdf] failed to generate final signed PDF:', err);
+    }
   }
 
   res.json({ ok: true, document_completed: documentCompleted });

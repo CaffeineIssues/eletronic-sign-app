@@ -8,8 +8,9 @@ import { config } from '../config.js';
 import { requireAuth, requireRole, loadDocument } from '../middleware/auth.js';
 import { AUDIT_EVENTS, logAudit, getAuditLogs } from '../services/auditService.js';
 import { generateSigningToken, tokenExpiryDate, signingLinkUrl } from '../services/tokenService.js';
-import { notifySigningRequest } from '../services/notificationService.js';
+import { notifySigningRequest, notifyOwnerDocumentCompleted } from '../services/notificationService.js';
 import { cleanCpf, isValidCpf } from '../services/cpfService.js';
+import { generateSignedPdf } from '../services/pdfService.js';
 
 export const documentsRouter = Router();
 documentsRouter.use(requireAuth, requireRole('admin', 'owner'));
@@ -122,9 +123,50 @@ documentsRouter.post('/', upload.single('file'), (req, res) => {
   res.status(201).json({ document: documentSummary(doc) });
 });
 
+/**
+ * Self-healing: if every signer finished but the final PDF is missing (e.g. a
+ * previous generation attempt crashed), regenerate it and complete the document.
+ */
+async function recoverCompletionIfNeeded(document) {
+  if (document.status !== 'pending_signature') return document;
+  const counts = db
+    .prepare(
+      `SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'signed' THEN 1 ELSE 0 END) AS signed
+       FROM document_signers WHERE document_id = ?`
+    )
+    .get(document.id);
+  if (!counts.total || counts.signed !== counts.total) return document;
+
+  try {
+    const signedPath = await generateSignedPdf(document.id);
+    db.prepare(
+      `UPDATE documents
+       SET status = 'completed', signed_file_path = ?, completed_at = datetime('now'), updated_at = datetime('now')
+       WHERE id = ?`
+    ).run(signedPath, document.id);
+    const alreadyLogged = db
+      .prepare(`SELECT 1 FROM audit_logs WHERE document_id = ? AND event = ?`)
+      .get(document.id, AUDIT_EVENTS.DOCUMENT_COMPLETED);
+    if (!alreadyLogged) {
+      logAudit({
+        documentId: document.id,
+        event: AUDIT_EVENTS.DOCUMENT_COMPLETED,
+        description: 'Todos os signatários concluíram. PDF final assinado gerado.',
+      });
+    }
+    const owner = db.prepare('SELECT id, name, email FROM users WHERE id = ?').get(document.owner_id);
+    notifyOwnerDocumentCompleted({ owner, document }).catch(() => {});
+    return db.prepare('SELECT * FROM documents WHERE id = ?').get(document.id);
+  } catch (err) {
+    console.error('[pdf] recovery generation failed:', err);
+    return document;
+  }
+}
+
 // ---- Document detail ----
-documentsRouter.get('/:id', loadDocument, (req, res) => {
-  res.json({ document: fullDocument(req.document) });
+documentsRouter.get('/:id', loadDocument, async (req, res) => {
+  const document = await recoverCompletionIfNeeded(req.document);
+  res.json({ document: fullDocument(document) });
 });
 
 // ---- Stream original PDF ----
