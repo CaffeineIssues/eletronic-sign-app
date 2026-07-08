@@ -14,6 +14,8 @@ export const signingRouter = Router();
 const CONSENT_TEXT =
   'Concordo que esta assinatura eletrônica tem o mesmo efeito legal de uma assinatura manuscrita.';
 
+const METHOD_LABELS = { drawn: 'desenhada', typed: 'digitada', uploaded: 'imagem enviada' };
+
 /** Resolve a raw signing token to signer + document, enforcing expiry and status. */
 function resolveToken(req, res) {
   const tokenHash = hashToken(req.params.token);
@@ -179,7 +181,7 @@ signingRouter.post('/:token/complete', async (req, res) => {
     documentId: document.id,
     signerId: signer.id,
     event: AUDIT_EVENTS.SIGNATURE_COMPLETED,
-    description: `${signer.name} <${signer.email}> assinou o documento (${method})`,
+    description: `${signer.name} <${signer.email}> assinou o documento (assinatura ${METHOD_LABELS[method] || method})`,
     req,
     metadata: { method },
   });

@@ -87,9 +87,27 @@ export async function generateSignedPdf(documentId) {
     }
   };
   const drawLine = (text, { size = 10, font = helvetica, color = rgb(0.15, 0.15, 0.2), indent = 0, gap = 5 } = {}) => {
-    ensureSpace(size + gap);
-    page.drawText(text, { x: margin + indent, y: cursorY - size, size, font, color, maxWidth: A4[0] - margin * 2 - indent });
-    cursorY -= size + gap;
+    const maxWidth = A4[0] - margin * 2 - indent;
+    // Wrap manually so cursorY advances for every rendered line.
+    const words = String(text).split(' ');
+    const lines = [];
+    let current = '';
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (font.widthOfTextAtSize(candidate, size) > maxWidth && current) {
+        lines.push(current);
+        current = word;
+      } else {
+        current = candidate;
+      }
+    }
+    if (current) lines.push(current);
+    for (let i = 0; i < lines.length; i++) {
+      const lineGap = i === lines.length - 1 ? gap : 2;
+      ensureSpace(size + lineGap);
+      page.drawText(lines[i], { x: margin + indent, y: cursorY - size, size, font, color });
+      cursorY -= size + lineGap;
+    }
   };
 
   const docHash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
