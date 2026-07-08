@@ -9,6 +9,7 @@ import { requireAuth, requireRole, loadDocument } from '../middleware/auth.js';
 import { AUDIT_EVENTS, logAudit, getAuditLogs } from '../services/auditService.js';
 import { generateSigningToken, tokenExpiryDate, signingLinkUrl } from '../services/tokenService.js';
 import { notifySigningRequest } from '../services/notificationService.js';
+import { cleanCpf, isValidCpf } from '../services/cpfService.js';
 
 export const documentsRouter = Router();
 documentsRouter.use(requireAuth, requireRole('admin', 'owner'));
@@ -37,23 +38,23 @@ function isPdfFile(filePath) {
 }
 
 function documentSummary(doc) {
-  const counts = db
+  const signers = db
     .prepare(
-      `SELECT COUNT(*) AS total, SUM(CASE WHEN status = 'signed' THEN 1 ELSE 0 END) AS signed
-       FROM document_signers WHERE document_id = ?`
+      `SELECT id, name, cpf, status FROM document_signers WHERE document_id = ? ORDER BY id`
     )
-    .get(doc.id);
+    .all(doc.id);
   return {
     ...doc,
-    signer_count: counts.total || 0,
-    signed_count: counts.signed || 0,
+    signer_count: signers.length,
+    signed_count: signers.filter((s) => s.status === 'signed').length,
+    signer_summaries: signers,
   };
 }
 
 function fullDocument(doc) {
   const signers = db
     .prepare(
-      `SELECT id, document_id, user_id, name, email, phone, status, signed_at,
+      `SELECT id, document_id, user_id, name, email, cpf, phone, status, signed_at,
               token_expires_at, created_at
        FROM document_signers WHERE document_id = ? ORDER BY id`
     )
@@ -64,7 +65,7 @@ function fullDocument(doc) {
   const signatures = db
     .prepare(
       `SELECT id, signer_id, method, signer_name, signer_email, ip_address, user_agent,
-              consent_given, signed_at
+              consent_given, signed_at, selfie_image
        FROM signatures WHERE document_id = ? ORDER BY id`
     )
     .all(doc.id);
@@ -155,10 +156,11 @@ documentsRouter.post('/:id/signers', loadDocument, (req, res) => {
   if (!['draft', 'pending_signature'].includes(req.document.status)) {
     return res.status(409).json({ error: 'Signatários só podem ser adicionados a documentos em rascunho ou pendentes' });
   }
-  const { name, email, phone } = req.body || {};
+  const { name, email, cpf, phone } = req.body || {};
   const errors = {};
   if (!name || !name.trim()) errors.name = 'O nome é obrigatório';
   if (!email || !/^\S+@\S+\.\S+$/.test(email)) errors.email = 'Informe um e-mail válido';
+  if (!cpf || !isValidCpf(cpf)) errors.cpf = 'Informe um CPF válido';
   if (Object.keys(errors).length) return res.status(422).json({ error: 'Validation failed', errors });
 
   const duplicate = db
@@ -171,10 +173,17 @@ documentsRouter.post('/:id/signers', loadDocument, (req, res) => {
   const linkedUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
   const result = db
     .prepare(
-      `INSERT INTO document_signers (document_id, user_id, name, email, phone)
-       VALUES (?, ?, ?, ?, ?)`
+      `INSERT INTO document_signers (document_id, user_id, name, email, cpf, phone)
+       VALUES (?, ?, ?, ?, ?, ?)`
     )
-    .run(req.document.id, linkedUser?.id ?? null, name.trim(), email.toLowerCase(), (phone || '').trim() || null);
+    .run(
+      req.document.id,
+      linkedUser?.id ?? null,
+      name.trim(),
+      email.toLowerCase(),
+      cleanCpf(cpf),
+      (phone || '').trim() || null
+    );
 
   logAudit({
     documentId: req.document.id,
@@ -187,7 +196,7 @@ documentsRouter.post('/:id/signers', loadDocument, (req, res) => {
   touchDocument(req.document.id);
 
   const signer = db
-    .prepare('SELECT id, document_id, user_id, name, email, phone, status, signed_at, created_at FROM document_signers WHERE id = ?')
+    .prepare('SELECT id, document_id, user_id, name, email, cpf, phone, status, signed_at, created_at FROM document_signers WHERE id = ?')
     .get(result.lastInsertRowid);
   res.status(201).json({ signer });
 });

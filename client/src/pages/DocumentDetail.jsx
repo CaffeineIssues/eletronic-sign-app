@@ -9,6 +9,7 @@ import Modal from '../components/Modal';
 import PdfViewer from '../components/PdfViewer';
 import { downloadSignedPdf } from '../components/DocumentsTable';
 import { FIELD_TYPE_LABELS, AUDIT_EVENT_LABELS } from '../labels';
+import { formatCpf, isValidCpf } from '../cpf';
 
 const EVENT_ICONS = {
   document_uploaded: '⬆',
@@ -22,15 +23,20 @@ const EVENT_ICONS = {
 };
 
 function AddSignerModal({ documentId, onClose, onAdded }) {
-  const [form, setForm] = useState({ name: '', email: '', phone: '' });
+  const [form, setForm] = useState({ name: '', email: '', cpf: '', phone: '' });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const setCpf = (e) => setForm((f) => ({ ...f, cpf: formatCpf(e.target.value) }));
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!isValidCpf(form.cpf)) {
+      setErrors({ cpf: 'Informe um CPF válido' });
+      return;
+    }
     setBusy(true);
     setErrors({});
     try {
@@ -58,6 +64,17 @@ function AddSignerModal({ documentId, onClose, onAdded }) {
           <label>E-mail</label>
           <input type="email" className={`input${errors.email ? ' invalid' : ''}`} value={form.email} onChange={set('email')} />
           {errors.email && <div className="field-error">{errors.email}</div>}
+        </div>
+        <div className="form-group">
+          <label>CPF</label>
+          <input
+            className={`input${errors.cpf ? ' invalid' : ''}`}
+            value={form.cpf}
+            onChange={setCpf}
+            placeholder="000.000.000-00"
+            inputMode="numeric"
+          />
+          {errors.cpf && <div className="field-error">{errors.cpf}</div>}
         </div>
         <div className="form-group">
           <label>Número de WhatsApp (opcional)</label>
@@ -254,21 +271,31 @@ export default function DocumentDetail() {
           </div>
           <div className="card-body" style={{ paddingTop: 6, paddingBottom: 6 }}>
             {!doc.signers.length && <div className="empty-state" style={{ padding: '24px 0' }}>Nenhum signatário ainda.</div>}
-            {doc.signers.map((s) => (
+            {doc.signers.map((s) => {
+              const selfie = doc.signatures.find((sig) => sig.signer_id === s.id)?.selfie_image;
+              return (
               <div key={s.id} className="signer-row">
-                <div className="avatar">{s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}</div>
+                {selfie ? (
+                  <img src={selfie} alt={`Selfie de ${s.name}`} className="avatar avatar-selfie" />
+                ) : (
+                  <div className="avatar">{s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}</div>
+                )}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 14 }}>{s.name}</div>
                   <div style={{ fontSize: 12.5, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {s.email}{s.phone ? ` · ${s.phone}` : ''}
                   </div>
+                  {s.cpf && (
+                    <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>CPF: {formatCpf(s.cpf)}</div>
+                  )}
                 </div>
                 <StatusBadge status={s.status} />
                 {doc.status === 'draft' && (
                   <button className="btn btn-danger btn-sm" onClick={() => removeSigner(s)}>✕</button>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

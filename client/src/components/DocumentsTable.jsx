@@ -2,6 +2,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, fetchPdfBlobUrl } from '../api';
 import { useToast } from '../context/ToastContext';
 import StatusBadge from './StatusBadge';
+import { formatCpf } from '../cpf';
 
 export async function downloadSignedPdf(doc, toast) {
   try {
@@ -62,7 +63,17 @@ export default function DocumentsTable({ documents, onChanged }) {
                 <Link to={`/documents/${doc.id}`} style={{ fontWeight: 600 }}>{doc.title}</Link>
               </td>
               <td><StatusBadge status={doc.status} /></td>
-              <td>{doc.signed_count}/{doc.signer_count} assinaram</td>
+              <td>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>
+                  {doc.signed_count}/{doc.signer_count} assinaram
+                </div>
+                {(doc.signer_summaries || []).map((s) => (
+                  <div key={s.id} style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    {s.name}
+                    {s.cpf ? ` · ${formatCpf(s.cpf)}` : ''}
+                  </div>
+                ))}
+              </td>
               <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>
                 {new Date(doc.created_at + 'Z').toLocaleDateString('pt-BR')}
               </td>

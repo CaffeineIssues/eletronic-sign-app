@@ -7,6 +7,7 @@ import Spinner, { LoadingBlock } from '../components/Spinner';
 import PdfViewer from '../components/PdfViewer';
 import { Brand } from '../components/Layout';
 import { SIGNER_FIELD_PROMPTS } from '../labels';
+import { formatCpf } from '../cpf';
 
 function typedSignatureImage(name) {
   const canvas = document.createElement('canvas');
@@ -68,6 +69,105 @@ function DrawPad({ onChange }) {
   );
 }
 
+function SelfieCapture({ value, onChange }) {
+  const toast = useToast();
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [cameraOn, setCameraOn] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
+
+  const stopCamera = useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCameraOn(false);
+  }, []);
+
+  useEffect(() => stopCamera, [stopCamera]);
+
+  const startCamera = async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 720 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setCameraOn(true);
+    } catch {
+      setCameraError('Não foi possível acessar a câmera. Verifique as permissões ou envie uma foto abaixo.');
+    }
+  };
+
+  useEffect(() => {
+    if (cameraOn && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [cameraOn]);
+
+  const capture = () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    onChange(canvas.toDataURL('image/jpeg', 0.85));
+    stopCamera();
+  };
+
+  const onFile = (file) => {
+    if (!file) return;
+    if (!['image/png', 'image/jpeg'].includes(file.type)) {
+      toast('A selfie deve ser PNG ou JPEG', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => onChange(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  if (value) {
+    return (
+      <div className="selfie-wrap">
+        <img src={value} alt="Sua selfie" className="selfie-preview" />
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => { onChange(null); startCamera(); }}>
+          Tirar outra
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="selfie-wrap">
+      {cameraOn ? (
+        <>
+          <video ref={videoRef} className="selfie-video" playsInline muted />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" className="btn btn-primary" onClick={capture}>📸 Capturar</button>
+            <button type="button" className="btn btn-secondary" onClick={stopCamera}>Cancelar</button>
+          </div>
+        </>
+      ) : (
+        <>
+          {cameraError && <div className="alert alert-error" style={{ marginBottom: 10 }}>{cameraError}</div>}
+          <button type="button" className="btn btn-primary" onClick={startCamera}>📷 Abrir câmera</button>
+          <div className="form-hint" style={{ margin: '10px 0 6px' }}>
+            Ou envie uma foto sua (a câmera do celular abre automaticamente):
+          </div>
+          <input
+            type="file"
+            accept="image/png,image/jpeg"
+            capture="user"
+            className="input"
+            onChange={(e) => onFile(e.target.files[0])}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function SignPage() {
   const { token } = useParams();
   const toast = useToast();
@@ -79,6 +179,7 @@ export default function SignPage() {
   const [typedName, setTypedName] = useState('');
   const [uploadedImage, setUploadedImage] = useState(null);
   const [fieldValues, setFieldValues] = useState({});
+  const [selfieImage, setSelfieImage] = useState(null);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -133,13 +234,20 @@ export default function SignPage() {
   const submit = async () => {
     setFieldErrors({});
     if (!signatureImage) return toast('Adicione sua assinatura primeiro', 'error');
+    if (!selfieImage) return toast('Tire uma selfie de verificação primeiro', 'error');
     if (!consent) return toast('Você precisa aceitar a declaração de consentimento', 'error');
     setBusy(true);
     try {
       await api(`/api/signing/${token}/complete`, {
         method: 'POST',
         auth: false,
-        body: { consent, method, signature_image: signatureImage, field_values: fieldValues },
+        body: {
+          consent,
+          method,
+          signature_image: signatureImage,
+          selfie_image: selfieImage,
+          field_values: fieldValues,
+        },
       });
       setDone(true);
       window.scrollTo(0, 0);
@@ -197,6 +305,7 @@ export default function SignPage() {
         <Brand />
         <div style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>
           Assinando como <strong>{session.signer.name}</strong> ({session.signer.email})
+          {session.signer.cpf && <> · CPF {formatCpf(session.signer.cpf)}</>}
         </div>
       </div>
 
@@ -271,12 +380,31 @@ export default function SignPage() {
                 </div>
               )}
 
+              <div style={{ marginTop: 18 }}>
+                <h3 style={{ marginBottom: 4 }}>Selfie de verificação *</h3>
+                <div className="form-hint" style={{ marginBottom: 10 }}>
+                  Para sua segurança, tire uma selfie que será anexada ao certificado de assinatura.
+                </div>
+                <SelfieCapture
+                  value={selfieImage}
+                  onChange={(img) => {
+                    if (img) markStarted();
+                    setSelfieImage(img);
+                  }}
+                />
+                {fieldErrors.selfie && <div className="field-error">{fieldErrors.selfie}</div>}
+              </div>
+
               <label className="consent-row">
                 <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
                 <span>{session.consent_text}</span>
               </label>
 
-              <button className="btn btn-primary btn-block" onClick={submit} disabled={busy || !consent || !signatureImage}>
+              <button
+                className="btn btn-primary btn-block"
+                onClick={submit}
+                disabled={busy || !consent || !signatureImage || !selfieImage}
+              >
                 {busy && <Spinner />} Concluir assinatura
               </button>
             </div>

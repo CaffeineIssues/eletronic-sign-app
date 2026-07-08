@@ -72,7 +72,8 @@ export default function PdfViewer({ fileUrl, renderOverlay, maxWidth = 820 }) {
         }
         if (cancelled) return;
         const baseWidth = loaded[0].getViewport({ scale: 1 }).width;
-        const targetWidth = Math.min(maxWidth, window.innerWidth - 60);
+        const isNarrow = window.innerWidth < 640;
+        const targetWidth = Math.min(maxWidth, window.innerWidth - (isNarrow ? 40 : 60));
         setScale(targetWidth / baseWidth);
         setPages(loaded);
       })

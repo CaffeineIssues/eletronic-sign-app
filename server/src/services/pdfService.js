@@ -133,15 +133,46 @@ export async function generateSignedPdf(documentId) {
   drawLine(`                             ${docHash.slice(32)}`, { size: 8 });
   drawLine(`Data de conclusão: ${completedAt} (UTC)`, { gap: 16 });
 
+  const formatCpf = (cpf) =>
+    cpf && cpf.length === 11 ? `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}.${cpf.slice(6, 9)}-${cpf.slice(9)}` : cpf || 'n/d';
+
+  const embedDataUrlImage = async (dataUrl) => {
+    const base64 = dataUrl.split(',')[1];
+    const bytes = Buffer.from(base64, 'base64');
+    return dataUrl.startsWith('data:image/jpeg') ? pdfDoc.embedJpg(bytes) : pdfDoc.embedPng(bytes);
+  };
+
   drawLine('Signatários', { size: 13, font: helveticaBold, gap: 8 });
+  const SELFIE_SIZE = 62;
   for (const signer of signers) {
     const sig = signatureBySigner.get(signer.id);
+    // Keep the whole block (text + selfie) on one page.
+    ensureSpace(120);
+    const blockTop = cursorY;
     drawLine(`${signer.name} <${signer.email}>`, { size: 10, font: helveticaBold, gap: 4 });
+    drawLine(`CPF: ${formatCpf(signer.cpf)}`, { indent: 14, size: 9, gap: 3 });
     if (sig) {
       drawLine(`Assinado em: ${sig.signed_at} (UTC)`, { indent: 14, size: 9, gap: 3 });
       drawLine(`Método: ${METHOD_LABELS[sig.method] || sig.method}    Endereço IP: ${sig.ip_address || 'n/d'}`, { indent: 14, size: 9, gap: 3 });
-      drawLine(`Navegador (user agent): ${(sig.user_agent || 'n/d').slice(0, 100)}`, { indent: 14, size: 9, gap: 3 });
-      drawLine(`Consentimento: ${sig.consent_given ? 'Concedido' : 'Não concedido'} — "${sig.consent_text || ''}"`, { indent: 14, size: 9, gap: 10 });
+      drawLine(`Navegador (user agent): ${(sig.user_agent || 'n/d').slice(0, 90)}`, { indent: 14, size: 9, gap: 3 });
+      drawLine(`Consentimento: ${sig.consent_given ? 'Concedido' : 'Não concedido'} — "${sig.consent_text || ''}"`, { indent: 14, size: 9, gap: 4 });
+      if (sig.selfie_image) {
+        try {
+          const selfie = await embedDataUrlImage(sig.selfie_image);
+          const scale = Math.min(SELFIE_SIZE / selfie.width, SELFIE_SIZE / selfie.height);
+          const dw = selfie.width * scale;
+          const dh = selfie.height * scale;
+          const sx = A4[0] - margin - dw;
+          const sy = blockTop - dh - 10;
+          page.drawImage(selfie, { x: sx, y: sy, width: dw, height: dh });
+          page.drawText('Selfie de verificação', {
+            x: sx, y: sy - 9, size: 6.5, font: helvetica, color: rgb(0.4, 0.4, 0.5),
+          });
+        } catch {
+          /* selfie could not be embedded; certificate remains valid without it */
+        }
+      }
+      cursorY = Math.min(cursorY, blockTop - SELFIE_SIZE - 24);
     } else {
       drawLine('Não assinado', { indent: 14, size: 9, gap: 10 });
     }

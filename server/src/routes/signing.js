@@ -66,6 +66,7 @@ signingRouter.get('/:token', (req, res) => {
       id: signer.id,
       name: signer.name,
       email: signer.email,
+      cpf: signer.cpf,
       status: signer.status,
       signed_at: signer.signed_at,
     },
@@ -111,7 +112,13 @@ signingRouter.post('/:token/complete', async (req, res) => {
     return res.status(409).json({ error: 'Este documento não está aberto para assinatura' });
   }
 
-  const { consent, method, signature_image: signatureImage, field_values: fieldValues = {} } = req.body || {};
+  const {
+    consent,
+    method,
+    signature_image: signatureImage,
+    selfie_image: selfieImage,
+    field_values: fieldValues = {},
+  } = req.body || {};
   if (consent !== true) {
     return res.status(422).json({ error: 'Validation failed', errors: { consent: 'Você precisa aceitar a declaração de consentimento para assinar' } });
   }
@@ -123,6 +130,12 @@ signingRouter.post('/:token/complete', async (req, res) => {
   }
   if (Buffer.byteLength(signatureImage) > 2 * 1024 * 1024) {
     return res.status(422).json({ error: 'Validation failed', errors: { signature: 'A imagem da assinatura é muito grande' } });
+  }
+  if (!selfieImage || !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(selfieImage)) {
+    return res.status(422).json({ error: 'Validation failed', errors: { selfie: 'A selfie de verificação é obrigatória' } });
+  }
+  if (Buffer.byteLength(selfieImage) > 5 * 1024 * 1024) {
+    return res.status(422).json({ error: 'Validation failed', errors: { selfie: 'A selfie é muito grande' } });
   }
 
   const fields = db
@@ -166,10 +179,10 @@ signingRouter.post('/:token/complete', async (req, res) => {
 
     db.prepare(
       `INSERT INTO signatures
-         (document_id, signer_id, signature_image, method, signer_name, signer_email,
+         (document_id, signer_id, signature_image, selfie_image, method, signer_name, signer_email,
           ip_address, user_agent, consent_given, consent_text, signed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
-    ).run(document.id, signer.id, signatureImage, method, signer.name, signer.email, ip, userAgent, CONSENT_TEXT, now);
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
+    ).run(document.id, signer.id, signatureImage, selfieImage, method, signer.name, signer.email, ip, userAgent, CONSENT_TEXT, now);
 
     db.prepare(
       `UPDATE document_signers SET status = 'signed', signed_at = ?, updated_at = datetime('now') WHERE id = ?`
@@ -183,7 +196,7 @@ signingRouter.post('/:token/complete', async (req, res) => {
     event: AUDIT_EVENTS.SIGNATURE_COMPLETED,
     description: `${signer.name} <${signer.email}> assinou o documento (assinatura ${METHOD_LABELS[method] || method})`,
     req,
-    metadata: { method },
+    metadata: { method, selfie_captured: true },
   });
   touchDocument(document.id);
 
