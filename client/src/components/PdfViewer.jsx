@@ -43,7 +43,7 @@ function PdfPage({ page, scale, pageNumber, renderOverlay }) {
         <canvas ref={canvasRef} />
         {size && renderOverlay && renderOverlay(pageNumber, size)}
       </div>
-      <div className="pdf-page-num">Page {pageNumber}</div>
+      <div className="pdf-page-num">Página {pageNumber}</div>
     </div>
   );
 }
@@ -76,7 +76,7 @@ export default function PdfViewer({ fileUrl, renderOverlay, maxWidth = 820 }) {
         setScale(targetWidth / baseWidth);
         setPages(loaded);
       })
-      .catch((err) => !cancelled && setError(err.message || 'Failed to load PDF'));
+      .catch((err) => !cancelled && setError(err.message || 'Falha ao carregar o PDF'));
 
     return () => {
       cancelled = true;
@@ -84,8 +84,8 @@ export default function PdfViewer({ fileUrl, renderOverlay, maxWidth = 820 }) {
     };
   }, [fileUrl, maxWidth]);
 
-  if (error) return <div className="alert alert-error">Could not display the PDF: {error}</div>;
-  if (!pages) return <LoadingBlock label="Rendering PDF…" />;
+  if (error) return <div className="alert alert-error">Não foi possível exibir o PDF: {error}</div>;
+  if (!pages) return <LoadingBlock label="Renderizando PDF…" />;
 
   return (
     <div className="pdf-stage">

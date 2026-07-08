@@ -20,7 +20,7 @@ const upload = multer({
   }),
   limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype !== 'application/pdf') return cb(new Error('Only PDF files are allowed'));
+    if (file.mimetype !== 'application/pdf') return cb(new Error('Apenas arquivos PDF são permitidos'));
     cb(null, true);
   },
 });
@@ -97,10 +97,10 @@ documentsRouter.get('/', (req, res) => {
 // ---- Upload document ----
 documentsRouter.post('/', upload.single('file'), (req, res) => {
   const file = req.file;
-  if (!file) return res.status(422).json({ error: 'Validation failed', errors: { file: 'A PDF file is required' } });
+  if (!file) return res.status(422).json({ error: 'Validation failed', errors: { file: 'Envie um arquivo PDF' } });
   if (!isPdfFile(file.path)) {
     fs.unlinkSync(file.path);
-    return res.status(422).json({ error: 'Validation failed', errors: { file: 'The uploaded file is not a valid PDF' } });
+    return res.status(422).json({ error: 'Validation failed', errors: { file: 'O arquivo enviado não é um PDF válido' } });
   }
   const title = (req.body.title || '').trim() || path.parse(file.originalname).name;
 
@@ -113,7 +113,7 @@ documentsRouter.post('/', upload.single('file'), (req, res) => {
     documentId: doc.id,
     userId: req.user.id,
     event: AUDIT_EVENTS.DOCUMENT_UPLOADED,
-    description: `Document "${title}" uploaded by ${req.user.name}`,
+    description: `Documento "${title}" enviado por ${req.user.name}`,
     req,
     metadata: { original_name: file.originalname, size: file.size },
   });
@@ -135,12 +135,12 @@ documentsRouter.get('/:id/file', loadDocument, (req, res) => {
 // ---- Download signed PDF ----
 documentsRouter.get('/:id/signed-file', loadDocument, (req, res) => {
   if (!req.document.signed_file_path || !fs.existsSync(req.document.signed_file_path)) {
-    return res.status(404).json({ error: 'Signed PDF is not available yet' });
+    return res.status(404).json({ error: 'O PDF assinado ainda não está disponível' });
   }
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader(
     'Content-Disposition',
-    `attachment; filename="${req.document.title.replace(/[^a-zA-Z0-9 _-]/g, '')} (signed).pdf"`
+    `attachment; filename="${req.document.title.replace(/[^a-zA-Z0-9 _-]/g, '')} (assinado).pdf"`
   );
   fs.createReadStream(req.document.signed_file_path).pipe(res);
 });
@@ -153,19 +153,19 @@ documentsRouter.get('/:id/audit', loadDocument, (req, res) => {
 // ---- Add signer ----
 documentsRouter.post('/:id/signers', loadDocument, (req, res) => {
   if (!['draft', 'pending_signature'].includes(req.document.status)) {
-    return res.status(409).json({ error: 'Signers can only be added to draft or pending documents' });
+    return res.status(409).json({ error: 'Signatários só podem ser adicionados a documentos em rascunho ou pendentes' });
   }
   const { name, email, phone } = req.body || {};
   const errors = {};
-  if (!name || !name.trim()) errors.name = 'Name is required';
-  if (!email || !/^\S+@\S+\.\S+$/.test(email)) errors.email = 'A valid email is required';
+  if (!name || !name.trim()) errors.name = 'O nome é obrigatório';
+  if (!email || !/^\S+@\S+\.\S+$/.test(email)) errors.email = 'Informe um e-mail válido';
   if (Object.keys(errors).length) return res.status(422).json({ error: 'Validation failed', errors });
 
   const duplicate = db
     .prepare('SELECT id FROM document_signers WHERE document_id = ? AND email = ?')
     .get(req.document.id, email.toLowerCase());
   if (duplicate) {
-    return res.status(422).json({ error: 'Validation failed', errors: { email: 'This signer was already added' } });
+    return res.status(422).json({ error: 'Validation failed', errors: { email: 'Este signatário já foi adicionado' } });
   }
 
   const linkedUser = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
@@ -181,7 +181,7 @@ documentsRouter.post('/:id/signers', loadDocument, (req, res) => {
     userId: req.user.id,
     signerId: result.lastInsertRowid,
     event: AUDIT_EVENTS.SIGNER_ADDED,
-    description: `Signer ${name.trim()} <${email.toLowerCase()}> added`,
+    description: `Signatário ${name.trim()} <${email.toLowerCase()}> adicionado`,
     req,
   });
   touchDocument(req.document.id);
@@ -195,12 +195,12 @@ documentsRouter.post('/:id/signers', loadDocument, (req, res) => {
 // ---- Remove signer ----
 documentsRouter.delete('/:id/signers/:signerId', loadDocument, (req, res) => {
   if (req.document.status !== 'draft') {
-    return res.status(409).json({ error: 'Signers can only be removed while the document is a draft' });
+    return res.status(409).json({ error: 'Signatários só podem ser removidos enquanto o documento estiver em rascunho' });
   }
   const signer = db
     .prepare('SELECT * FROM document_signers WHERE id = ? AND document_id = ?')
     .get(req.params.signerId, req.document.id);
-  if (!signer) return res.status(404).json({ error: 'Signer not found' });
+  if (!signer) return res.status(404).json({ error: 'Signatário não encontrado' });
   db.prepare('DELETE FROM document_signers WHERE id = ?').run(signer.id);
   touchDocument(req.document.id);
   res.json({ ok: true });
@@ -209,10 +209,10 @@ documentsRouter.delete('/:id/signers/:signerId', loadDocument, (req, res) => {
 // ---- Save signature fields (replace-all while draft) ----
 documentsRouter.put('/:id/fields', loadDocument, (req, res) => {
   if (req.document.status !== 'draft') {
-    return res.status(409).json({ error: 'Fields can only be edited while the document is a draft' });
+    return res.status(409).json({ error: 'Os campos só podem ser editados enquanto o documento estiver em rascunho' });
   }
   const fields = Array.isArray(req.body?.fields) ? req.body.fields : null;
-  if (!fields) return res.status(422).json({ error: 'Validation failed', errors: { fields: 'fields array is required' } });
+  if (!fields) return res.status(422).json({ error: 'Validation failed', errors: { fields: 'A lista de campos é obrigatória' } });
 
   const validTypes = ['signature', 'initials', 'date', 'text'];
   const signerIds = new Set(
@@ -220,10 +220,10 @@ documentsRouter.put('/:id/fields', loadDocument, (req, res) => {
   );
   for (const f of fields) {
     if (!signerIds.has(Number(f.signer_id))) {
-      return res.status(422).json({ error: 'Validation failed', errors: { fields: `Unknown signer for field` } });
+      return res.status(422).json({ error: 'Validation failed', errors: { fields: `Signatário desconhecido para o campo` } });
     }
     if (!validTypes.includes(f.field_type)) {
-      return res.status(422).json({ error: 'Validation failed', errors: { fields: `Invalid field type "${f.field_type}"` } });
+      return res.status(422).json({ error: 'Validation failed', errors: { fields: `Tipo de campo inválido "${f.field_type}"` } });
     }
   }
 
@@ -258,7 +258,7 @@ documentsRouter.put('/:id/fields', loadDocument, (req, res) => {
 // ---- Send for signature ----
 documentsRouter.post('/:id/send', loadDocument, async (req, res) => {
   if (!['draft', 'pending_signature'].includes(req.document.status)) {
-    return res.status(409).json({ error: 'This document cannot be sent in its current status' });
+    return res.status(409).json({ error: 'Este documento não pode ser enviado no status atual' });
   }
   const signers = db
     .prepare(`SELECT * FROM document_signers WHERE document_id = ? AND status != 'signed'`)
@@ -266,12 +266,12 @@ documentsRouter.post('/:id/send', loadDocument, async (req, res) => {
   const allSigners = db
     .prepare('SELECT COUNT(*) AS c FROM document_signers WHERE document_id = ?')
     .get(req.document.id);
-  if (!allSigners.c) return res.status(422).json({ error: 'Add at least one signer before sending' });
+  if (!allSigners.c) return res.status(422).json({ error: 'Adicione pelo menos um signatário antes de enviar' });
 
   const fieldCount = db
     .prepare('SELECT COUNT(*) AS c FROM signature_fields WHERE document_id = ?')
     .get(req.document.id);
-  if (!fieldCount.c) return res.status(422).json({ error: 'Place at least one signature field before sending' });
+  if (!fieldCount.c) return res.status(422).json({ error: 'Posicione pelo menos um campo de assinatura antes de enviar' });
 
   const deliveries = [];
   for (const signer of signers) {
@@ -296,7 +296,7 @@ documentsRouter.post('/:id/send', loadDocument, async (req, res) => {
       userId: req.user.id,
       signerId: signer.id,
       event: AUDIT_EVENTS.SIGNING_LINK_SENT,
-      description: `Signing link sent to ${signer.name} <${signer.email}>`,
+      description: `Link de assinatura enviado para ${signer.name} <${signer.email}>`,
       req,
       metadata: { email: result.email, whatsapp: result.whatsapp, expires_at: expiresAt },
     });
@@ -314,10 +314,10 @@ documentsRouter.post('/:id/send', loadDocument, async (req, res) => {
 // ---- Cancel ----
 documentsRouter.post('/:id/cancel', loadDocument, (req, res) => {
   if (req.document.status === 'completed') {
-    return res.status(409).json({ error: 'Completed documents cannot be cancelled' });
+    return res.status(409).json({ error: 'Documentos concluídos não podem ser cancelados' });
   }
   if (req.document.status === 'cancelled') {
-    return res.status(409).json({ error: 'This document is already cancelled' });
+    return res.status(409).json({ error: 'Este documento já foi cancelado' });
   }
   db.prepare(`UPDATE documents SET status = 'cancelled', updated_at = datetime('now') WHERE id = ?`).run(
     req.document.id
@@ -332,7 +332,7 @@ documentsRouter.post('/:id/cancel', loadDocument, (req, res) => {
     documentId: req.document.id,
     userId: req.user.id,
     event: AUDIT_EVENTS.DOCUMENT_CANCELLED,
-    description: `Document cancelled by ${req.user.name}`,
+    description: `Documento cancelado por ${req.user.name}`,
     req,
   });
 

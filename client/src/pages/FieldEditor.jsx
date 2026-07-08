@@ -4,6 +4,7 @@ import { api, fetchPdfBlobUrl } from '../api';
 import { useToast } from '../context/ToastContext';
 import Spinner, { LoadingBlock } from '../components/Spinner';
 import PdfViewer from '../components/PdfViewer';
+import { FIELD_TYPE_LABELS } from '../labels';
 
 const DEFAULT_SIZES = {
   signature: { width: 0.28, height: 0.06 },
@@ -43,7 +44,7 @@ export default function FieldEditor() {
 
   const addField = (pageNumber, e, size) => {
     if (!activeSigner) {
-      toast('Add a signer before placing fields', 'error');
+      toast('Adicione um signatário antes de posicionar campos', 'error');
       return;
     }
     const rect = e.currentTarget.getBoundingClientRect();
@@ -120,7 +121,7 @@ export default function FieldEditor() {
         signer_id, page_number, x_position, y_position, width, height, field_type, required,
       }));
       await api(`/api/documents/${id}/fields`, { method: 'PUT', body: { fields: payload } });
-      toast('Fields saved', 'success');
+      toast('Campos salvos', 'success');
       if (thenBack) navigate(`/documents/${id}`);
     } catch (err) {
       toast(err.errors?.fields || err.message, 'error');
@@ -130,18 +131,18 @@ export default function FieldEditor() {
   };
 
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!doc) return <LoadingBlock label="Loading editor…" />;
+  if (!doc) return <LoadingBlock label="Carregando editor…" />;
 
   if (doc.status !== 'draft') {
     return (
       <div className="alert alert-error">
-        Fields can only be edited while the document is a draft.{' '}
-        <Link to={`/documents/${id}`}>Back to document</Link>
+        Os campos só podem ser editados enquanto o documento estiver em rascunho.{' '}
+        <Link to={`/documents/${id}`}>Voltar ao documento</Link>
       </div>
     );
   }
 
-  const signerName = (signerId) => doc.signers.find((s) => s.id === signerId)?.name || 'Signer';
+  const signerName = (signerId) => doc.signers.find((s) => s.id === signerId)?.name || 'Signatário';
 
   const renderOverlay = (pageNumber, size) => (
     <div
@@ -163,7 +164,7 @@ export default function FieldEditor() {
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => startDrag(e, f, size, 'move')}
           >
-            {f.field_type} · {signerName(f.signer_id)}{f.required ? ' *' : ''}
+            {FIELD_TYPE_LABELS[f.field_type] || f.field_type} · {signerName(f.signer_id)}{f.required ? ' *' : ''}
             <button className="field-remove" onPointerDown={(e) => e.stopPropagation()} onClick={() => removeField(f.id)}>
               ✕
             </button>
@@ -177,46 +178,46 @@ export default function FieldEditor() {
     <>
       <div className="page-header">
         <div>
-          <h1>Field editor</h1>
-          <p className="subtitle">{doc.title} — click on the page to place a field, drag to move, corner to resize</p>
+          <h1>Editor de campos</h1>
+          <p className="subtitle">{doc.title} — clique na página para posicionar um campo, arraste para mover e use o canto para redimensionar</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <Link to={`/documents/${id}`} className="btn btn-secondary">Back</Link>
+          <Link to={`/documents/${id}`} className="btn btn-secondary">Voltar</Link>
           <button className="btn btn-primary" onClick={() => save(true)} disabled={saving}>
-            {saving && <Spinner />} Save fields
+            {saving && <Spinner />} Salvar campos
           </button>
         </div>
       </div>
 
       {!doc.signers.length && (
         <div className="alert alert-error">
-          This document has no signers yet. <Link to={`/documents/${id}`}>Add signers first</Link>, then place their fields.
+          Este documento ainda não tem signatários. <Link to={`/documents/${id}`}>Adicione signatários primeiro</Link> e depois posicione os campos.
         </div>
       )}
 
       <div className="card editor-toolbar">
-        <span className="toolbar-label">Signer</span>
+        <span className="toolbar-label">Signatário</span>
         <select className="input" style={{ width: 200 }} value={activeSigner ?? ''} onChange={(e) => setActiveSigner(Number(e.target.value))}>
           {doc.signers.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
-        <span className="toolbar-label">Field type</span>
+        <span className="toolbar-label">Tipo de campo</span>
         <select className="input" style={{ width: 150 }} value={fieldType} onChange={(e) => setFieldType(e.target.value)}>
-          <option value="signature">Signature</option>
-          <option value="initials">Initials</option>
-          <option value="date">Date signed</option>
-          <option value="text">Text</option>
+          <option value="signature">Assinatura</option>
+          <option value="initials">Rubrica</option>
+          <option value="date">Data da assinatura</option>
+          <option value="text">Texto</option>
         </select>
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, fontWeight: 600 }}>
           <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
-          Required
+          Obrigatório
         </label>
         <span style={{ flex: 1 }} />
-        <span className="toolbar-label">{fields.length} field{fields.length === 1 ? '' : 's'} placed</span>
+        <span className="toolbar-label">{fields.length} campo{fields.length === 1 ? '' : 's'} posicionado{fields.length === 1 ? '' : 's'}</span>
       </div>
 
-      {pdfUrl ? <PdfViewer fileUrl={pdfUrl} renderOverlay={renderOverlay} /> : <LoadingBlock label="Loading PDF…" />}
+      {pdfUrl ? <PdfViewer fileUrl={pdfUrl} renderOverlay={renderOverlay} /> : <LoadingBlock label="Carregando PDF…" />}
     </>
   );
 }

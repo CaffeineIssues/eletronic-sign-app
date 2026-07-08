@@ -6,11 +6,11 @@ import { LoadingBlock } from '../components/Spinner';
 import DocumentsTable from '../components/DocumentsTable';
 
 const STAT_CARDS = [
-  { key: 'total', label: 'Total documents' },
-  { key: 'draft', label: 'Drafts' },
-  { key: 'pending_signature', label: 'Pending signature' },
-  { key: 'completed', label: 'Completed' },
-  { key: 'cancelled', label: 'Cancelled' },
+  { key: 'total', label: 'Total de documentos' },
+  { key: 'draft', label: 'Rascunhos' },
+  { key: 'pending_signature', label: 'Aguardando assinatura' },
+  { key: 'completed', label: 'Concluídos' },
+  { key: 'cancelled', label: 'Cancelados' },
 ];
 
 export default function Dashboard() {
@@ -31,16 +31,16 @@ export default function Dashboard() {
   useEffect(load, []);
 
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!stats || !documents) return <LoadingBlock label="Loading dashboard…" />;
+  if (!stats || !documents) return <LoadingBlock label="Carregando painel…" />;
 
   return (
     <>
       <div className="page-header">
         <div>
-          <h1>Dashboard</h1>
-          <p className="subtitle">Welcome back, {user.name}</p>
+          <h1>Painel</h1>
+          <p className="subtitle">Bem-vindo(a) de volta, {user.name}</p>
         </div>
-        <Link to="/documents/upload" className="btn btn-primary">+ Upload document</Link>
+        <Link to="/documents/upload" className="btn btn-primary">+ Enviar documento</Link>
       </div>
 
       <div className="stat-grid">
@@ -54,8 +54,8 @@ export default function Dashboard() {
 
       <div className="card">
         <div className="card-header">
-          <h2>Recent documents</h2>
-          <Link to="/documents" className="btn btn-secondary btn-sm">View all</Link>
+          <h2>Documentos recentes</h2>
+          <Link to="/documents" className="btn btn-secondary btn-sm">Ver todos</Link>
         </div>
         <DocumentsTable documents={documents.slice(0, 6)} onChanged={load} />
       </div>

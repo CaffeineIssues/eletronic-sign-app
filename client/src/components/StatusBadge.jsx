@@ -1,12 +1,12 @@
 const LABELS = {
-  draft: 'Draft',
-  pending_signature: 'Pending signature',
-  completed: 'Completed',
-  cancelled: 'Cancelled',
-  pending: 'Pending',
-  sent: 'Sent',
-  viewed: 'Viewed',
-  signed: 'Signed',
+  draft: 'Rascunho',
+  pending_signature: 'Aguardando assinatura',
+  completed: 'Concluído',
+  cancelled: 'Cancelado',
+  pending: 'Pendente',
+  sent: 'Enviado',
+  viewed: 'Visualizado',
+  signed: 'Assinado',
 };
 
 export default function StatusBadge({ status }) {

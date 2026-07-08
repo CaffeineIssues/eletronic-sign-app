@@ -62,7 +62,7 @@ function layout(title, bodyHtml) {
     <h2 style="color:#111827;margin-bottom:16px">${title}</h2>
     ${bodyHtml}
     <p style="color:#9ca3af;font-size:12px;margin-top:32px">
-      This message was sent by the eSign App. If you were not expecting it you can ignore it.
+      Esta mensagem foi enviada pelo eSign. Se você não a esperava, pode ignorá-la.
     </p>
   </div>`;
 }
@@ -70,23 +70,23 @@ function layout(title, bodyHtml) {
 export async function notifySigningRequest({ signer, document, ownerName, signingUrl }) {
   const results = { email: null, whatsapp: null };
   const emailHtml = layout(
-    'You have a document to sign',
-    `<p>Hi ${signer.name},</p>
-     <p><strong>${ownerName}</strong> has requested your signature on
+    'Você tem um documento para assinar',
+    `<p>Olá, ${signer.name}!</p>
+     <p><strong>${ownerName}</strong> solicitou sua assinatura no documento
         <strong>${document.title}</strong>.</p>
      <p style="margin:24px 0">
        <a href="${signingUrl}"
           style="background:#4f46e5;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none">
-         Review &amp; Sign Document
+         Revisar e assinar documento
        </a>
      </p>
-     <p style="font-size:13px;color:#6b7280">Or copy this link: ${signingUrl}</p>
-     <p style="font-size:13px;color:#6b7280">This link is unique to you. Do not share it.</p>`
+     <p style="font-size:13px;color:#6b7280">Ou copie este link: ${signingUrl}</p>
+     <p style="font-size:13px;color:#6b7280">Este link é exclusivo para você. Não o compartilhe.</p>`
   );
   try {
     results.email = await sendEmail({
       to: signer.email,
-      subject: `Signature requested: ${document.title}`,
+      subject: `Assinatura solicitada: ${document.title}`,
       html: emailHtml,
     });
     if (results.email?.skipped) {
@@ -102,7 +102,7 @@ export async function notifySigningRequest({ signer, document, ownerName, signin
     try {
       results.whatsapp = await sendWhatsApp({
         to: signer.phone,
-        body: `Hi ${signer.name}, ${ownerName} has requested your signature on "${document.title}". Sign here: ${signingUrl}`,
+        body: `Olá, ${signer.name}! ${ownerName} solicitou sua assinatura no documento "${document.title}". Assine aqui: ${signingUrl}`,
       });
     } catch (err) {
       console.error('[whatsapp] failed:', err.message);
@@ -116,11 +116,11 @@ export async function notifyOwnerSignerCompleted({ owner, document, signer }) {
   try {
     await sendEmail({
       to: owner.email,
-      subject: `${signer.name} signed "${document.title}"`,
+      subject: `${signer.name} assinou "${document.title}"`,
       html: layout(
-        'A signer has completed signing',
-        `<p>Hi ${owner.name},</p>
-         <p><strong>${signer.name}</strong> (${signer.email}) has signed
+        'Um signatário concluiu a assinatura',
+        `<p>Olá, ${owner.name}!</p>
+         <p><strong>${signer.name}</strong> (${signer.email}) assinou o documento
             <strong>${document.title}</strong>.</p>`
       ),
     });
@@ -133,12 +133,12 @@ export async function notifyOwnerDocumentCompleted({ owner, document }) {
   try {
     await sendEmail({
       to: owner.email,
-      subject: `Document completed: ${document.title}`,
+      subject: `Documento concluído: ${document.title}`,
       html: layout(
-        'Your document is fully signed',
-        `<p>Hi ${owner.name},</p>
-         <p>All signers have completed <strong>${document.title}</strong>.
-            The final signed PDF with the audit trail is ready for download in your dashboard.</p>`
+        'Seu documento foi totalmente assinado',
+        `<p>Olá, ${owner.name}!</p>
+         <p>Todos os signatários concluíram <strong>${document.title}</strong>.
+            O PDF final assinado, com a trilha de auditoria, já está disponível para download no seu painel.</p>`
       ),
     });
   } catch (err) {

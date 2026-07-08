@@ -20,14 +20,14 @@ function publicUser(user) {
 authRouter.post('/register', (req, res) => {
   const { name, email, password } = req.body || {};
   const errors = {};
-  if (!name || !name.trim()) errors.name = 'Name is required';
-  if (!email || !/^\S+@\S+\.\S+$/.test(email)) errors.email = 'A valid email is required';
-  if (!password || password.length < 8) errors.password = 'Password must be at least 8 characters';
+  if (!name || !name.trim()) errors.name = 'O nome é obrigatório';
+  if (!email || !/^\S+@\S+\.\S+$/.test(email)) errors.email = 'Informe um e-mail válido';
+  if (!password || password.length < 8) errors.password = 'A senha deve ter pelo menos 8 caracteres';
   if (Object.keys(errors).length) return res.status(422).json({ error: 'Validation failed', errors });
 
   const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
   if (existing) {
-    return res.status(422).json({ error: 'Validation failed', errors: { email: 'Email is already registered' } });
+    return res.status(422).json({ error: 'Validation failed', errors: { email: 'Este e-mail já está cadastrado' } });
   }
 
   const passwordHash = bcrypt.hashSync(password, 10);
@@ -41,11 +41,11 @@ authRouter.post('/register', (req, res) => {
 authRouter.post('/login', (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) {
-    return res.status(422).json({ error: 'Validation failed', errors: { email: 'Email and password are required' } });
+    return res.status(422).json({ error: 'Validation failed', errors: { email: 'E-mail e senha são obrigatórios' } });
   }
   const user = db.prepare('SELECT * FROM users WHERE email = ?').get(String(email).toLowerCase());
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
-    return res.status(401).json({ error: 'Invalid email or password' });
+    return res.status(401).json({ error: 'E-mail ou senha inválidos' });
   }
   res.json({ token: issueToken(user), user: publicUser(user) });
 });

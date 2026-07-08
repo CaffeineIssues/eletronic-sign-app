@@ -8,6 +8,7 @@ import StatusBadge from '../components/StatusBadge';
 import Modal from '../components/Modal';
 import PdfViewer from '../components/PdfViewer';
 import { downloadSignedPdf } from '../components/DocumentsTable';
+import { FIELD_TYPE_LABELS, AUDIT_EVENT_LABELS } from '../labels';
 
 const EVENT_ICONS = {
   document_uploaded: '⬆',
@@ -34,7 +35,7 @@ function AddSignerModal({ documentId, onClose, onAdded }) {
     setErrors({});
     try {
       await api(`/api/documents/${documentId}/signers`, { method: 'POST', body: form });
-      toast('Signer added', 'success');
+      toast('Signatário adicionado', 'success');
       onAdded();
       onClose();
     } catch (err) {
@@ -46,25 +47,25 @@ function AddSignerModal({ documentId, onClose, onAdded }) {
   };
 
   return (
-    <Modal title="Add signer" onClose={onClose}>
+    <Modal title="Adicionar signatário" onClose={onClose}>
       <form onSubmit={submit}>
         <div className="form-group">
-          <label>Full name</label>
+          <label>Nome completo</label>
           <input className={`input${errors.name ? ' invalid' : ''}`} value={form.name} onChange={set('name')} autoFocus />
           {errors.name && <div className="field-error">{errors.name}</div>}
         </div>
         <div className="form-group">
-          <label>Email</label>
+          <label>E-mail</label>
           <input type="email" className={`input${errors.email ? ' invalid' : ''}`} value={form.email} onChange={set('email')} />
           {errors.email && <div className="field-error">{errors.email}</div>}
         </div>
         <div className="form-group">
-          <label>WhatsApp number (optional)</label>
+          <label>Número de WhatsApp (opcional)</label>
           <input className="input" value={form.phone} onChange={set('phone')} placeholder="+55 11 91234 5678" />
-          <div className="form-hint">If provided, the signing link is also sent via WhatsApp (360dialog).</div>
+          <div className="form-hint">Se informado, o link de assinatura também será enviado por WhatsApp (360dialog).</div>
         </div>
         <button className="btn btn-primary btn-block" disabled={busy}>
-          {busy && <Spinner />} Add signer
+          {busy && <Spinner />} Adicionar signatário
         </button>
       </form>
     </Modal>
@@ -78,8 +79,8 @@ function AuditTrail({ documentId }) {
     api(`/api/documents/${documentId}/audit`).then((d) => setLogs(d.logs)).catch(() => setLogs([]));
   }, [documentId]);
 
-  if (!logs) return <LoadingBlock label="Loading audit trail…" />;
-  if (!logs.length) return <div className="empty-state">No events recorded yet.</div>;
+  if (!logs) return <LoadingBlock label="Carregando trilha de auditoria…" />;
+  if (!logs.length) return <div className="empty-state">Nenhum evento registrado ainda.</div>;
 
   return (
     <div>
@@ -87,10 +88,10 @@ function AuditTrail({ documentId }) {
         <div key={log.id} className="audit-item">
           <div className="audit-icon">{EVENT_ICONS[log.event] || '•'}</div>
           <div>
-            <div style={{ fontWeight: 600, fontSize: 14 }}>{log.event.replaceAll('_', ' ')}</div>
+            <div style={{ fontWeight: 600, fontSize: 14 }}>{AUDIT_EVENT_LABELS[log.event] || log.event.replaceAll('_', ' ')}</div>
             <div style={{ fontSize: 13.5 }}>{log.description}</div>
             <div className="audit-meta">
-              {new Date(log.created_at + 'Z').toLocaleString()}
+              {new Date(log.created_at + 'Z').toLocaleString('pt-BR')}
               {log.ip_address && <> · IP {log.ip_address}</>}
               {log.user_agent && <> · {log.user_agent.slice(0, 60)}…</>}
             </div>
@@ -128,15 +129,15 @@ export default function DocumentDetail() {
   }, [id]);
 
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!doc) return <LoadingBlock label="Loading document…" />;
+  if (!doc) return <LoadingBlock label="Carregando documento…" />;
 
   const sendDocument = async () => {
-    if (!doc.signers.length) return toast('Add at least one signer first', 'error');
-    if (!doc.fields.length) return toast('Place at least one signature field first', 'error');
+    if (!doc.signers.length) return toast('Adicione pelo menos um signatário primeiro', 'error');
+    if (!doc.fields.length) return toast('Posicione pelo menos um campo de assinatura primeiro', 'error');
     setSending(true);
     try {
       await api(`/api/documents/${id}/send`, { method: 'POST' });
-      toast('Signing links sent to all pending signers', 'success');
+      toast('Links de assinatura enviados a todos os signatários pendentes', 'success');
       load();
     } catch (err) {
       toast(err.message, 'error');
@@ -146,10 +147,10 @@ export default function DocumentDetail() {
   };
 
   const cancelDocument = async () => {
-    if (!window.confirm('Cancel this document? Outstanding signing links will stop working.')) return;
+    if (!window.confirm('Cancelar este documento? Os links de assinatura pendentes deixarão de funcionar.')) return;
     try {
       await api(`/api/documents/${id}/cancel`, { method: 'POST' });
-      toast('Document cancelled', 'success');
+      toast('Documento cancelado', 'success');
       load();
     } catch (err) {
       toast(err.message, 'error');
@@ -157,7 +158,7 @@ export default function DocumentDetail() {
   };
 
   const removeSigner = async (signer) => {
-    if (!window.confirm(`Remove ${signer.name}?`)) return;
+    if (!window.confirm(`Remover ${signer.name}?`)) return;
     try {
       await api(`/api/documents/${id}/signers/${signer.id}`, { method: 'DELETE' });
       load();
@@ -167,7 +168,7 @@ export default function DocumentDetail() {
   };
 
   const fieldsBySignerPage = (pageNumber) => doc.fields.filter((f) => f.page_number === pageNumber);
-  const signerName = (signerId) => doc.signers.find((s) => s.id === signerId)?.name || 'Signer';
+  const signerName = (signerId) => doc.signers.find((s) => s.id === signerId)?.name || 'Signatário';
 
   const renderOverlay = (pageNumber, size) => (
     <>
@@ -184,7 +185,7 @@ export default function DocumentDetail() {
         >
           {f.signed_at && f.value?.startsWith('data:image')
             ? <img src={f.value} alt="signature" />
-            : `${f.field_type} · ${signerName(f.signer_id)}`}
+            : `${FIELD_TYPE_LABELS[f.field_type] || f.field_type} · ${signerName(f.signer_id)}`}
         </div>
       ))}
     </>
@@ -199,60 +200,60 @@ export default function DocumentDetail() {
             <StatusBadge status={doc.status} />
           </div>
           <p className="subtitle">
-            Created {new Date(doc.created_at + 'Z').toLocaleString()} · {doc.signed_count}/{doc.signer_count} signers completed
+            Criado em {new Date(doc.created_at + 'Z').toLocaleString('pt-BR')} · {doc.signed_count}/{doc.signer_count} signatários concluíram
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {doc.status === 'draft' && (
             <>
-              <Link to={`/documents/${id}/fields`} className="btn btn-secondary">Edit fields</Link>
+              <Link to={`/documents/${id}/fields`} className="btn btn-secondary">Editar campos</Link>
               <button className="btn btn-primary" onClick={sendDocument} disabled={sending}>
-                {sending && <Spinner />} Send for signature
+                {sending && <Spinner />} Enviar para assinatura
               </button>
             </>
           )}
           {doc.status === 'pending_signature' && (
             <button className="btn btn-primary" onClick={sendDocument} disabled={sending}>
-              {sending && <Spinner />} Resend links
+              {sending && <Spinner />} Reenviar links
             </button>
           )}
           {doc.status === 'completed' && (
             <button className="btn btn-primary" onClick={() => downloadSignedPdf(doc, toast)}>
-              Download signed PDF
+              Baixar PDF assinado
             </button>
           )}
           {['draft', 'pending_signature'].includes(doc.status) && (
-            <button className="btn btn-danger" onClick={cancelDocument}>Cancel</button>
+            <button className="btn btn-danger" onClick={cancelDocument}>Cancelar</button>
           )}
         </div>
       </div>
 
       {doc.status === 'completed' && (
         <div className="alert alert-info">
-          This document is completed. The final PDF includes every signature and a certificate page with the full audit trail.
+          Este documento foi concluído. O PDF final inclui todas as assinaturas e uma página de certificado com a trilha de auditoria completa.
         </div>
       )}
 
       <div className="detail-grid">
         <div>
           <div className="signature-tabs" style={{ marginBottom: 12 }}>
-            <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>Document</button>
-            <button className={tab === 'audit' ? 'active' : ''} onClick={() => setTab('audit')}>Audit trail</button>
+            <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>Documento</button>
+            <button className={tab === 'audit' ? 'active' : ''} onClick={() => setTab('audit')}>Trilha de auditoria</button>
           </div>
           {tab === 'overview'
-            ? (pdfUrl ? <PdfViewer fileUrl={pdfUrl} renderOverlay={renderOverlay} maxWidth={640} /> : <LoadingBlock label="Loading PDF…" />)
+            ? (pdfUrl ? <PdfViewer fileUrl={pdfUrl} renderOverlay={renderOverlay} maxWidth={640} /> : <LoadingBlock label="Carregando PDF…" />)
             : <div className="card"><div className="card-body"><AuditTrail documentId={id} /></div></div>}
         </div>
 
         <div className="card">
           <div className="card-header">
-            <h2>Signers</h2>
+            <h2>Signatários</h2>
             {['draft', 'pending_signature'].includes(doc.status) && (
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowAddSigner(true)}>+ Add</button>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowAddSigner(true)}>+ Adicionar</button>
             )}
           </div>
           <div className="card-body" style={{ paddingTop: 6, paddingBottom: 6 }}>
-            {!doc.signers.length && <div className="empty-state" style={{ padding: '24px 0' }}>No signers yet.</div>}
+            {!doc.signers.length && <div className="empty-state" style={{ padding: '24px 0' }}>Nenhum signatário ainda.</div>}
             {doc.signers.map((s) => (
               <div key={s.id} className="signer-row">
                 <div className="avatar">{s.name.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase()}</div>

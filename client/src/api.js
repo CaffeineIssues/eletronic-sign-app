@@ -11,7 +11,7 @@ export function setToken(token) {
 
 export class ApiError extends Error {
   constructor(status, data) {
-    super(data?.error || `Request failed (${status})`);
+    super(data?.error || `Falha na requisição (${status})`);
     this.status = status;
     this.errors = data?.errors || null;
   }

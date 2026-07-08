@@ -95,33 +95,45 @@ export async function generateSignedPdf(documentId) {
   const docHash = crypto.createHash('sha256').update(pdfBytes).digest('hex');
   const completedAt = new Date().toISOString();
 
-  drawLine('Signature Certificate & Audit Trail', { size: 18, font: helveticaBold, color: rgb(0.2, 0.2, 0.45), gap: 14 });
-  drawLine(`Document: ${document.title}`, { size: 11, font: helveticaBold });
-  drawLine(`Document ID: ${document.id}`);
-  drawLine(`Owner: ${owner.name} (${owner.email})`);
-  drawLine(`Original file SHA-256: ${docHash.slice(0, 32)}`, { size: 8 });
-  drawLine(`                       ${docHash.slice(32)}`, { size: 8 });
-  drawLine(`Completion date: ${completedAt}`, { gap: 16 });
+  const METHOD_LABELS = { drawn: 'desenhada', typed: 'digitada', uploaded: 'imagem enviada' };
+  const EVENT_LABELS = {
+    document_uploaded: 'documento enviado',
+    signer_added: 'signatário adicionado',
+    signing_link_sent: 'link de assinatura enviado',
+    document_viewed: 'documento visualizado',
+    signature_started: 'assinatura iniciada',
+    signature_completed: 'assinatura concluída',
+    document_completed: 'documento concluído',
+    document_cancelled: 'documento cancelado',
+  };
 
-  drawLine('Signers', { size: 13, font: helveticaBold, gap: 8 });
+  drawLine('Certificado de Assinatura e Trilha de Auditoria', { size: 18, font: helveticaBold, color: rgb(0.2, 0.2, 0.45), gap: 14 });
+  drawLine(`Documento: ${document.title}`, { size: 11, font: helveticaBold });
+  drawLine(`ID do documento: ${document.id}`);
+  drawLine(`Proprietário: ${owner.name} (${owner.email})`);
+  drawLine(`SHA-256 do arquivo original: ${docHash.slice(0, 32)}`, { size: 8 });
+  drawLine(`                             ${docHash.slice(32)}`, { size: 8 });
+  drawLine(`Data de conclusão: ${completedAt} (UTC)`, { gap: 16 });
+
+  drawLine('Signatários', { size: 13, font: helveticaBold, gap: 8 });
   for (const signer of signers) {
     const sig = signatureBySigner.get(signer.id);
     drawLine(`${signer.name} <${signer.email}>`, { size: 10, font: helveticaBold, gap: 4 });
     if (sig) {
-      drawLine(`Signed at: ${sig.signed_at} (UTC)`, { indent: 14, size: 9, gap: 3 });
-      drawLine(`Method: ${sig.method}    IP address: ${sig.ip_address || 'n/a'}`, { indent: 14, size: 9, gap: 3 });
-      drawLine(`User agent: ${(sig.user_agent || 'n/a').slice(0, 100)}`, { indent: 14, size: 9, gap: 3 });
-      drawLine(`Consent: ${sig.consent_given ? 'Given' : 'Not given'} — "${sig.consent_text || ''}"`, { indent: 14, size: 9, gap: 10 });
+      drawLine(`Assinado em: ${sig.signed_at} (UTC)`, { indent: 14, size: 9, gap: 3 });
+      drawLine(`Método: ${METHOD_LABELS[sig.method] || sig.method}    Endereço IP: ${sig.ip_address || 'n/d'}`, { indent: 14, size: 9, gap: 3 });
+      drawLine(`Navegador (user agent): ${(sig.user_agent || 'n/d').slice(0, 100)}`, { indent: 14, size: 9, gap: 3 });
+      drawLine(`Consentimento: ${sig.consent_given ? 'Concedido' : 'Não concedido'} — "${sig.consent_text || ''}"`, { indent: 14, size: 9, gap: 10 });
     } else {
-      drawLine('Not signed', { indent: 14, size: 9, gap: 10 });
+      drawLine('Não assinado', { indent: 14, size: 9, gap: 10 });
     }
   }
 
   cursorY -= 6;
-  drawLine('Event history', { size: 13, font: helveticaBold, gap: 8 });
+  drawLine('Histórico de eventos', { size: 13, font: helveticaBold, gap: 8 });
   for (const log of auditLogs) {
-    const actor = log.signer_name || log.user_name || 'system';
-    drawLine(`${log.created_at} UTC — ${log.event} — ${actor}`, { size: 9, font: helveticaBold, gap: 3 });
+    const actor = log.signer_name || log.user_name || 'sistema';
+    drawLine(`${log.created_at} UTC — ${EVENT_LABELS[log.event] || log.event} — ${actor}`, { size: 9, font: helveticaBold, gap: 3 });
     if (log.description) drawLine(log.description.slice(0, 120), { indent: 14, size: 8, gap: 3 });
     if (log.ip_address) drawLine(`IP: ${log.ip_address}  UA: ${(log.user_agent || '').slice(0, 90)}`, { indent: 14, size: 8, gap: 6 });
     else cursorY -= 3;

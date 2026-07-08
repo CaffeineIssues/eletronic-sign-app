@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import Spinner, { LoadingBlock } from '../components/Spinner';
 import PdfViewer from '../components/PdfViewer';
 import { Brand } from '../components/Layout';
+import { SIGNER_FIELD_PROMPTS } from '../labels';
 
 function typedSignatureImage(name) {
   const canvas = document.createElement('canvas');
@@ -60,7 +61,7 @@ function DrawPad({ onChange }) {
             onChange(null);
           }}
         >
-          Clear
+          Limpar
         </button>
       </div>
     </div>
@@ -116,7 +117,7 @@ export default function SignPage() {
   const onUpload = (file) => {
     if (!file) return setUploadedImage(null);
     if (!['image/png', 'image/jpeg'].includes(file.type)) {
-      toast('Signature image must be a PNG or JPEG', 'error');
+      toast('A imagem da assinatura deve ser PNG ou JPEG', 'error');
       return;
     }
     markStarted();
@@ -131,8 +132,8 @@ export default function SignPage() {
 
   const submit = async () => {
     setFieldErrors({});
-    if (!signatureImage) return toast('Add your signature first', 'error');
-    if (!consent) return toast('You must accept the consent statement', 'error');
+    if (!signatureImage) return toast('Adicione sua assinatura primeiro', 'error');
+    if (!consent) return toast('Você precisa aceitar a declaração de consentimento', 'error');
     setBusy(true);
     try {
       await api(`/api/signing/${token}/complete`, {
@@ -144,7 +145,7 @@ export default function SignPage() {
       window.scrollTo(0, 0);
     } catch (err) {
       setFieldErrors(err.errors || {});
-      toast(err.errors ? 'Please review the highlighted fields' : err.message, 'error');
+      toast(err.errors ? 'Revise os campos destacados' : err.message, 'error');
     } finally {
       setBusy(false);
     }
@@ -156,14 +157,14 @@ export default function SignPage() {
         <div className="card auth-card">
           <div className="card-body" style={{ textAlign: 'center' }}>
             <div className="auth-brand"><Brand /></div>
-            <h2>Link unavailable</h2>
+            <h2>Link indisponível</h2>
             <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>{error}</p>
           </div>
         </div>
       </div>
     );
   }
-  if (!session) return <LoadingBlock label="Loading your document…" />;
+  if (!session) return <LoadingBlock label="Carregando seu documento…" />;
 
   const textFields = session.fields.filter((f) => f.field_type === 'text');
 
@@ -184,7 +185,7 @@ export default function SignPage() {
           >
             {done && signatureImage && ['signature', 'initials'].includes(f.field_type)
               ? <img src={signatureImage} alt="signature" />
-              : `Your ${f.field_type}${f.required ? ' *' : ''}`}
+              : `${SIGNER_FIELD_PROMPTS[f.field_type] || f.field_type}${f.required ? ' *' : ''}`}
           </div>
         ))}
     </>
@@ -195,36 +196,36 @@ export default function SignPage() {
       <div className="sign-header">
         <Brand />
         <div style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>
-          Signing as <strong>{session.signer.name}</strong> ({session.signer.email})
+          Assinando como <strong>{session.signer.name}</strong> ({session.signer.email})
         </div>
       </div>
 
       {done ? (
         <div className="card sign-complete">
           <div className="check">✓</div>
-          <h1>Thank you, you're all set!</h1>
+          <h1>Obrigado, tudo certo!</h1>
           <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>
-            Your signature on “{session.document.title}” has been recorded.
-            {session.document.owner_name && <> {session.document.owner_name} has been notified.</>}
-            {' '}Once every signer completes, the final signed PDF is generated automatically.
+            Sua assinatura em “{session.document.title}” foi registrada.
+            {session.document.owner_name && <> {session.document.owner_name} foi notificado(a).</>}
+            {' '}Assim que todos os signatários concluírem, o PDF final assinado será gerado automaticamente.
           </p>
         </div>
       ) : (
         <>
           <div className="alert alert-info">
-            <strong>{session.document.owner_name || 'The sender'}</strong> requested your signature on{' '}
-            <strong>{session.document.title}</strong>. Review the document below, then add your signature.
+            <strong>{session.document.owner_name || 'O remetente'}</strong> solicitou sua assinatura em{' '}
+            <strong>{session.document.title}</strong>. Revise o documento abaixo e adicione sua assinatura.
           </div>
 
-          {pdfUrl ? <PdfViewer fileUrl={pdfUrl} renderOverlay={renderOverlay} maxWidth={760} /> : <LoadingBlock label="Loading PDF…" />}
+          {pdfUrl ? <PdfViewer fileUrl={pdfUrl} renderOverlay={renderOverlay} maxWidth={760} /> : <LoadingBlock label="Carregando PDF…" />}
 
           <div className="card" style={{ marginTop: 20 }}>
-            <div className="card-header"><h2>Your signature</h2></div>
+            <div className="card-header"><h2>Sua assinatura</h2></div>
             <div className="card-body">
               <div className="signature-tabs">
-                <button className={tab === 'draw' ? 'active' : ''} onClick={() => setTab('draw')}>✍ Draw</button>
-                <button className={tab === 'type' ? 'active' : ''} onClick={() => { setTab('type'); markStarted(); }}>⌨ Type</button>
-                <button className={tab === 'upload' ? 'active' : ''} onClick={() => setTab('upload')}>⬆ Upload</button>
+                <button className={tab === 'draw' ? 'active' : ''} onClick={() => setTab('draw')}>✍ Desenhar</button>
+                <button className={tab === 'type' ? 'active' : ''} onClick={() => { setTab('type'); markStarted(); }}>⌨ Digitar</button>
+                <button className={tab === 'upload' ? 'active' : ''} onClick={() => setTab('upload')}>⬆ Enviar imagem</button>
               </div>
 
               {tab === 'draw' && <DrawPad onChange={onDraw} />}
@@ -232,17 +233,17 @@ export default function SignPage() {
               {tab === 'type' && (
                 <div>
                   <div className="form-group">
-                    <label>Type your name</label>
+                    <label>Digite seu nome</label>
                     <input className="input" value={typedName} onChange={(e) => setTypedName(e.target.value)} />
                   </div>
-                  <div className="sig-typed-preview">{typedName.trim() || 'Your name'}</div>
+                  <div className="sig-typed-preview">{typedName.trim() || 'Seu nome'}</div>
                 </div>
               )}
 
               {tab === 'upload' && (
                 <div>
                   <div className="form-group">
-                    <label>Upload a signature image (PNG or JPEG)</label>
+                    <label>Envie uma imagem da assinatura (PNG ou JPEG)</label>
                     <input type="file" accept="image/png,image/jpeg" className="input" onChange={(e) => onUpload(e.target.files[0])} />
                   </div>
                   {uploadedImage && (
@@ -255,10 +256,10 @@ export default function SignPage() {
 
               {textFields.length > 0 && (
                 <div style={{ marginTop: 18 }}>
-                  <h3 style={{ marginBottom: 10 }}>Additional fields</h3>
+                  <h3 style={{ marginBottom: 10 }}>Campos adicionais</h3>
                   {textFields.map((f) => (
                     <div className="form-group" key={f.id}>
-                      <label>Text field (page {f.page_number}){f.required ? ' *' : ''}</label>
+                      <label>Campo de texto (página {f.page_number}){f.required ? ' *' : ''}</label>
                       <input
                         className={`input${fieldErrors[`field_${f.id}`] ? ' invalid' : ''}`}
                         value={fieldValues[f.id] || ''}
@@ -276,7 +277,7 @@ export default function SignPage() {
               </label>
 
               <button className="btn btn-primary btn-block" onClick={submit} disabled={busy || !consent || !signatureImage}>
-                {busy && <Spinner />} Complete signing
+                {busy && <Spinner />} Concluir assinatura
               </button>
             </div>
           </div>
