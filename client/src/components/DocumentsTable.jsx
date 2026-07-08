@@ -2,17 +2,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, fetchPdfBlobUrl } from '../api';
 import { useToast } from '../context/ToastContext';
 import StatusBadge from './StatusBadge';
+import { formatCpf } from '../cpf';
 
 export async function downloadSignedPdf(doc, toast) {
   try {
     const url = await fetchPdfBlobUrl(`/api/documents/${doc.id}/signed-file`);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${doc.title} (signed).pdf`;
+    a.download = `${doc.title} (assinado).pdf`;
     a.click();
     URL.revokeObjectURL(url);
   } catch {
-    toast('Signed PDF is not available yet', 'error');
+    toast('O PDF assinado ainda não está disponível', 'error');
   }
 }
 
@@ -21,10 +22,10 @@ export default function DocumentsTable({ documents, onChanged }) {
   const navigate = useNavigate();
 
   const cancelDocument = async (doc) => {
-    if (!window.confirm(`Cancel "${doc.title}"? Outstanding signing links will stop working.`)) return;
+    if (!window.confirm(`Cancelar "${doc.title}"? Os links de assinatura pendentes deixarão de funcionar.`)) return;
     try {
       await api(`/api/documents/${doc.id}/cancel`, { method: 'POST' });
-      toast('Document cancelled', 'success');
+      toast('Documento cancelado', 'success');
       onChanged?.();
     } catch (err) {
       toast(err.message, 'error');
@@ -34,10 +35,10 @@ export default function DocumentsTable({ documents, onChanged }) {
   if (!documents.length) {
     return (
       <div className="empty-state">
-        <h3>No documents yet</h3>
-        <p>Upload a PDF to get started.</p>
+        <h3>Nenhum documento ainda</h3>
+        <p>Envie um PDF para começar.</p>
         <div style={{ marginTop: 14 }}>
-          <Link to="/documents/upload" className="btn btn-primary">Upload document</Link>
+          <Link to="/documents/upload" className="btn btn-primary">Enviar documento</Link>
         </div>
       </div>
     );
@@ -48,11 +49,11 @@ export default function DocumentsTable({ documents, onChanged }) {
       <table className="table">
         <thead>
           <tr>
-            <th>Title</th>
+            <th>Título</th>
             <th>Status</th>
-            <th>Signers</th>
-            <th>Created</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+            <th>Signatários</th>
+            <th>Criado em</th>
+            <th style={{ textAlign: 'right' }}>Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -62,25 +63,35 @@ export default function DocumentsTable({ documents, onChanged }) {
                 <Link to={`/documents/${doc.id}`} style={{ fontWeight: 600 }}>{doc.title}</Link>
               </td>
               <td><StatusBadge status={doc.status} /></td>
-              <td>{doc.signed_count}/{doc.signer_count} signed</td>
+              <td>
+                <div style={{ fontWeight: 600, fontSize: 13 }}>
+                  {doc.signed_count}/{doc.signer_count} assinaram
+                </div>
+                {(doc.signer_summaries || []).map((s) => (
+                  <div key={s.id} style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    {s.name}
+                    {s.cpf ? ` · ${formatCpf(s.cpf)}` : ''}
+                  </div>
+                ))}
+              </td>
               <td style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-                {new Date(doc.created_at + 'Z').toLocaleDateString()}
+                {new Date(doc.created_at + 'Z').toLocaleDateString('pt-BR')}
               </td>
               <td>
                 <div className="row-actions">
-                  <Link to={`/documents/${doc.id}`} className="btn btn-secondary btn-sm">View</Link>
+                  <Link to={`/documents/${doc.id}`} className="btn btn-secondary btn-sm">Ver</Link>
                   {doc.status === 'draft' && (
                     <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/documents/${doc.id}/fields`)}>
-                      Edit fields
+                      Editar campos
                     </button>
                   )}
                   {doc.status === 'completed' && (
                     <button className="btn btn-secondary btn-sm" onClick={() => downloadSignedPdf(doc, toast)}>
-                      Download
+                      Baixar
                     </button>
                   )}
                   {['draft', 'pending_signature'].includes(doc.status) && (
-                    <button className="btn btn-danger btn-sm" onClick={() => cancelDocument(doc)}>Cancel</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => cancelDocument(doc)}>Cancelar</button>
                   )}
                 </div>
               </td>

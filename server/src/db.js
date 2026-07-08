@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS document_signers (
   user_id INTEGER REFERENCES users(id),
   name TEXT NOT NULL,
   email TEXT NOT NULL,
+  cpf TEXT,
   phone TEXT,
   token_hash TEXT UNIQUE,
   token_expires_at TEXT,
@@ -72,6 +73,7 @@ CREATE TABLE IF NOT EXISTS signatures (
   document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   signer_id INTEGER NOT NULL REFERENCES document_signers(id) ON DELETE CASCADE,
   signature_image TEXT,
+  selfie_image TEXT,
   method TEXT NOT NULL CHECK (method IN ('drawn', 'typed', 'uploaded')),
   signer_name TEXT NOT NULL,
   signer_email TEXT NOT NULL,
@@ -102,6 +104,14 @@ CREATE INDEX IF NOT EXISTS idx_fields_document ON signature_fields(document_id);
 CREATE INDEX IF NOT EXISTS idx_signatures_document ON signatures(document_id);
 CREATE INDEX IF NOT EXISTS idx_audit_document ON audit_logs(document_id);
 `);
+
+// Lightweight migrations for databases created before these columns existed.
+function ensureColumn(table, column, ddl) {
+  const exists = db.prepare(`SELECT 1 FROM pragma_table_info(?) WHERE name = ?`).get(table, column);
+  if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+ensureColumn('document_signers', 'cpf', 'cpf TEXT');
+ensureColumn('signatures', 'selfie_image', 'selfie_image TEXT');
 
 export function touchDocument(documentId) {
   db.prepare(`UPDATE documents SET updated_at = datetime('now') WHERE id = ?`).run(documentId);

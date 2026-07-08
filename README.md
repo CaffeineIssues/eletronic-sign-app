@@ -1,4 +1,4 @@
-# eSign — Electronic Signature App
+# JuliPet — Assinatura Eletrônica
 
 A lightweight electronic-signature web app. Document owners upload PDFs, place signature fields visually, and send secure signing links by email (SMTP) and WhatsApp (360dialog). Signers draw, type, or upload a signature; once everyone signs, a final PDF is generated with the signatures stamped in place plus a certificate page containing the full audit trail.
 

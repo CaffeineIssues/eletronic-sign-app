@@ -31,28 +31,28 @@ export default function Login() {
       <div className="card auth-card">
         <div className="card-body">
           <div className="auth-brand"><Brand /></div>
-          <h1 style={{ textAlign: 'center', fontSize: 20 }}>Welcome back</h1>
+          <h1 style={{ textAlign: 'center', fontSize: 20 }}>Bem-vindo(a) de volta</h1>
           <p className="subtitle" style={{ textAlign: 'center', marginBottom: 20, color: 'var(--text-muted)', fontSize: 14 }}>
-            Sign in to manage your documents
+            Entre para gerenciar seus documentos
           </p>
           {error && <div className="alert alert-error">{error}</div>}
           <form onSubmit={submit}>
             <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">E-mail</label>
               <input id="email" type="email" className="input" value={email}
                 onChange={(e) => setEmail(e.target.value)} required autoFocus />
             </div>
             <div className="form-group">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">Senha</label>
               <input id="password" type="password" className="input" value={password}
                 onChange={(e) => setPassword(e.target.value)} required />
             </div>
             <button className="btn btn-primary btn-block" disabled={busy}>
-              {busy && <Spinner />} Sign in
+              {busy && <Spinner />} Entrar
             </button>
           </form>
           <div className="auth-footer">
-            No account yet? <Link to="/register">Create one</Link>
+            Ainda não tem conta? <Link to="/register">Criar conta</Link>
           </div>
         </div>
       </div>

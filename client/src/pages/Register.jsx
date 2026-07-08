@@ -35,37 +35,37 @@ export default function Register() {
       <div className="card auth-card">
         <div className="card-body">
           <div className="auth-brand"><Brand /></div>
-          <h1 style={{ textAlign: 'center', fontSize: 20 }}>Create your account</h1>
+          <h1 style={{ textAlign: 'center', fontSize: 20 }}>Crie sua conta</h1>
           <p className="subtitle" style={{ textAlign: 'center', marginBottom: 20, color: 'var(--text-muted)', fontSize: 14 }}>
-            Upload, send and sign documents in minutes
+            Envie e assine documentos em minutos
           </p>
           {error && <div className="alert alert-error">{error}</div>}
           <form onSubmit={submit}>
             <div className="form-group">
-              <label htmlFor="name">Full name</label>
+              <label htmlFor="name">Nome completo</label>
               <input id="name" className={`input${fieldErrors.name ? ' invalid' : ''}`} value={form.name}
                 onChange={set('name')} required autoFocus />
               {fieldErrors.name && <div className="field-error">{fieldErrors.name}</div>}
             </div>
             <div className="form-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email">E-mail</label>
               <input id="email" type="email" className={`input${fieldErrors.email ? ' invalid' : ''}`} value={form.email}
                 onChange={set('email')} required />
               {fieldErrors.email && <div className="field-error">{fieldErrors.email}</div>}
             </div>
             <div className="form-group">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password">Senha</label>
               <input id="password" type="password" className={`input${fieldErrors.password ? ' invalid' : ''}`}
                 value={form.password} onChange={set('password')} required minLength={8} />
               {fieldErrors.password && <div className="field-error">{fieldErrors.password}</div>}
-              <div className="form-hint">At least 8 characters.</div>
+              <div className="form-hint">Pelo menos 8 caracteres.</div>
             </div>
             <button className="btn btn-primary btn-block" disabled={busy}>
-              {busy && <Spinner />} Create account
+              {busy && <Spinner />} Criar conta
             </button>
           </form>
           <div className="auth-footer">
-            Already have an account? <Link to="/login">Sign in</Link>
+            Já tem uma conta? <Link to="/login">Entrar</Link>
           </div>
         </div>
       </div>

@@ -20,7 +20,7 @@ export default function Upload() {
   const submit = async (e) => {
     e.preventDefault();
     if (!file) {
-      setErrors({ file: 'Choose a PDF file to upload' });
+      setErrors({ file: 'Escolha um arquivo PDF para enviar' });
       return;
     }
     setBusy(true);
@@ -30,7 +30,7 @@ export default function Upload() {
     formData.append('title', title);
     try {
       const data = await api('/api/documents', { method: 'POST', formData });
-      toast('Document uploaded', 'success');
+      toast('Documento enviado', 'success');
       navigate(`/documents/${data.document.id}`);
     } catch (err) {
       setErrors(err.errors || { file: err.message });
@@ -43,26 +43,26 @@ export default function Upload() {
     <>
       <div className="page-header">
         <div>
-          <h1>Upload document</h1>
-          <p className="subtitle">Only PDF files are accepted (max 25 MB)</p>
+          <h1>Enviar documento</h1>
+          <p className="subtitle">Apenas arquivos PDF são aceitos (máx. 25 MB)</p>
         </div>
       </div>
       <div className="card" style={{ maxWidth: 560 }}>
         <div className="card-body">
           <form onSubmit={submit}>
             <div className="form-group">
-              <label htmlFor="title">Document title</label>
+              <label htmlFor="title">Título do documento</label>
               <input id="title" className="input" value={title} onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Consulting Agreement" />
+                placeholder="ex.: Contrato de Consultoria" />
             </div>
             <div className="form-group">
-              <label htmlFor="file">PDF file</label>
+              <label htmlFor="file">Arquivo PDF</label>
               <input id="file" type="file" accept="application/pdf" className={`input${errors.file ? ' invalid' : ''}`}
                 onChange={(e) => onFile(e.target.files[0])} />
               {errors.file && <div className="field-error">{errors.file}</div>}
             </div>
             <button className="btn btn-primary" disabled={busy}>
-              {busy && <Spinner />} Upload
+              {busy && <Spinner />} Enviar
             </button>
           </form>
         </div>

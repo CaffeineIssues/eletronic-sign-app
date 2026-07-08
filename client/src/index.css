@@ -55,20 +55,12 @@ a:hover { text-decoration: underline; }
 }
 
 .brand {
-  font-weight: 800;
-  font-size: 18px;
-  color: var(--text);
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-shrink: 0;
 }
 .brand:hover { text-decoration: none; }
-.brand-mark {
-  width: 28px; height: 28px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--primary), #8b5cf6);
-  color: #fff; display: inline-flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 800;
-}
+.brand-logo { height: 40px; display: block; }
 
 .topbar nav { display: flex; gap: 4px; flex: 1; }
 .topbar nav a {
@@ -255,6 +247,18 @@ a:hover { text-decoration: underline; }
 .consent-row { display: flex; gap: 10px; align-items: flex-start; font-size: 13.5px; margin: 16px 0; }
 .consent-row input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--primary); }
 
+/* ---------- Selfie capture ---------- */
+.selfie-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.selfie-video {
+  width: 100%; max-width: 340px; border-radius: 12px; background: #111;
+  aspect-ratio: 3 / 4; object-fit: cover; transform: scaleX(-1);
+}
+.selfie-preview {
+  width: 150px; height: 200px; object-fit: cover; border-radius: 12px;
+  border: 2px solid var(--success); box-shadow: var(--shadow);
+}
+.avatar-selfie { object-fit: cover; border: 2px solid var(--success); }
+
 .sign-complete { text-align: center; padding: 60px 24px; }
 .sign-complete .check {
   width: 64px; height: 64px; border-radius: 50%; background: var(--success-soft); color: var(--success);
@@ -283,4 +287,31 @@ a:hover { text-decoration: underline; }
   .detail-grid { grid-template-columns: 1fr; }
   .topbar { padding: 0 14px; gap: 12px; overflow-x: auto; }
   .page { padding: 20px 14px 56px; }
+}
+
+/* ---------- Mobile refinements ---------- */
+@media (max-width: 640px) {
+  h1 { font-size: 20px; }
+  .topbar { height: 54px; }
+  .brand-logo { height: 32px; }
+  .topbar .user-chip span { display: none; }
+  .page-header { margin-bottom: 16px; }
+  .page-header > div:last-child { width: 100%; }
+  .page-header .btn { flex: 1; }
+  .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .stat-card { padding: 12px 14px; }
+  .stat-card .stat-value { font-size: 22px; }
+  .card-body { padding: 14px; }
+  .card-header { padding: 12px 14px; }
+  .pdf-stage { padding: 8px; border-radius: 8px; }
+  .sign-shell { padding: 12px 10px 64px; }
+  .sign-header { padding: 10px 0; }
+  .signature-tabs button { flex: 1; padding: 10px 6px; }
+  .sig-canvas-wrap canvas { height: 150px; }
+  .btn { padding: 10px 14px; }
+  .btn-sm { padding: 7px 10px; }
+  .modal { max-width: 100%; }
+  .editor-toolbar { gap: 8px; }
+  .editor-toolbar select.input { width: 100% !important; }
+  .table th, .table td { padding: 10px 10px; }
 }

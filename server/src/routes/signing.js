@@ -12,23 +12,25 @@ import {
 export const signingRouter = Router();
 
 const CONSENT_TEXT =
-  'I agree that this electronic signature has the same legal effect as a handwritten signature.';
+  'Concordo que esta assinatura eletrônica tem o mesmo efeito legal de uma assinatura manuscrita.';
+
+const METHOD_LABELS = { drawn: 'desenhada', typed: 'digitada', uploaded: 'imagem enviada' };
 
 /** Resolve a raw signing token to signer + document, enforcing expiry and status. */
 function resolveToken(req, res) {
   const tokenHash = hashToken(req.params.token);
   const signer = db.prepare('SELECT * FROM document_signers WHERE token_hash = ?').get(tokenHash);
   if (!signer) {
-    res.status(404).json({ error: 'This signing link is invalid or has been revoked' });
+    res.status(404).json({ error: 'Este link de assinatura é inválido ou foi revogado' });
     return null;
   }
   if (signer.status !== 'signed' && isExpired(signer.token_expires_at)) {
-    res.status(410).json({ error: 'This signing link has expired. Ask the sender for a new one.' });
+    res.status(410).json({ error: 'Este link de assinatura expirou. Solicite um novo ao remetente.' });
     return null;
   }
   const document = db.prepare('SELECT * FROM documents WHERE id = ?').get(signer.document_id);
   if (!document || document.status === 'cancelled') {
-    res.status(410).json({ error: 'This document is no longer available for signing' });
+    res.status(410).json({ error: 'Este documento não está mais disponível para assinatura' });
     return null;
   }
   return { signer, document };
@@ -52,7 +54,7 @@ signingRouter.get('/:token', (req, res) => {
       documentId: document.id,
       signerId: signer.id,
       event: AUDIT_EVENTS.DOCUMENT_VIEWED,
-      description: `${signer.name} opened the document`,
+      description: `${signer.name} abriu o documento`,
       req,
     });
   }
@@ -64,6 +66,7 @@ signingRouter.get('/:token', (req, res) => {
       id: signer.id,
       name: signer.name,
       email: signer.email,
+      cpf: signer.cpf,
       status: signer.status,
       signed_at: signer.signed_at,
     },
@@ -85,12 +88,12 @@ signingRouter.post('/:token/start', (req, res) => {
   const resolved = resolveToken(req, res);
   if (!resolved) return;
   const { signer, document } = resolved;
-  if (signer.status === 'signed') return res.status(409).json({ error: 'You have already signed this document' });
+  if (signer.status === 'signed') return res.status(409).json({ error: 'Você já assinou este documento' });
   logAudit({
     documentId: document.id,
     signerId: signer.id,
     event: AUDIT_EVENTS.SIGNATURE_STARTED,
-    description: `${signer.name} started signing`,
+    description: `${signer.name} iniciou a assinatura`,
     req,
   });
   res.json({ ok: true });
@@ -103,24 +106,36 @@ signingRouter.post('/:token/complete', async (req, res) => {
   const { signer, document } = resolved;
 
   if (signer.status === 'signed') {
-    return res.status(409).json({ error: 'You have already signed this document' });
+    return res.status(409).json({ error: 'Você já assinou este documento' });
   }
   if (document.status !== 'pending_signature') {
-    return res.status(409).json({ error: 'This document is not open for signing' });
+    return res.status(409).json({ error: 'Este documento não está aberto para assinatura' });
   }
 
-  const { consent, method, signature_image: signatureImage, field_values: fieldValues = {} } = req.body || {};
+  const {
+    consent,
+    method,
+    signature_image: signatureImage,
+    selfie_image: selfieImage,
+    field_values: fieldValues = {},
+  } = req.body || {};
   if (consent !== true) {
-    return res.status(422).json({ error: 'Validation failed', errors: { consent: 'You must accept the consent statement to sign' } });
+    return res.status(422).json({ error: 'Validation failed', errors: { consent: 'Você precisa aceitar a declaração de consentimento para assinar' } });
   }
   if (!['drawn', 'typed', 'uploaded'].includes(method)) {
-    return res.status(422).json({ error: 'Validation failed', errors: { method: 'Invalid signature method' } });
+    return res.status(422).json({ error: 'Validation failed', errors: { method: 'Método de assinatura inválido' } });
   }
   if (!signatureImage || !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(signatureImage)) {
-    return res.status(422).json({ error: 'Validation failed', errors: { signature: 'A signature image is required' } });
+    return res.status(422).json({ error: 'Validation failed', errors: { signature: 'A imagem da assinatura é obrigatória' } });
   }
   if (Buffer.byteLength(signatureImage) > 2 * 1024 * 1024) {
-    return res.status(422).json({ error: 'Validation failed', errors: { signature: 'Signature image is too large' } });
+    return res.status(422).json({ error: 'Validation failed', errors: { signature: 'A imagem da assinatura é muito grande' } });
+  }
+  if (!selfieImage || !/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(selfieImage)) {
+    return res.status(422).json({ error: 'Validation failed', errors: { selfie: 'A selfie de verificação é obrigatória' } });
+  }
+  if (Buffer.byteLength(selfieImage) > 5 * 1024 * 1024) {
+    return res.status(422).json({ error: 'Validation failed', errors: { selfie: 'A selfie é muito grande' } });
   }
 
   const fields = db
@@ -146,7 +161,7 @@ signingRouter.post('/:token/complete', async (req, res) => {
     if (field.required && field.field_type === 'text' && !String(fieldValues[field.id] || '').trim()) {
       return res.status(422).json({
         error: 'Validation failed',
-        errors: { [`field_${field.id}`]: 'This field is required' },
+        errors: { [`field_${field.id}`]: 'Este campo é obrigatório' },
       });
     }
   }
@@ -164,10 +179,10 @@ signingRouter.post('/:token/complete', async (req, res) => {
 
     db.prepare(
       `INSERT INTO signatures
-         (document_id, signer_id, signature_image, method, signer_name, signer_email,
+         (document_id, signer_id, signature_image, selfie_image, method, signer_name, signer_email,
           ip_address, user_agent, consent_given, consent_text, signed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
-    ).run(document.id, signer.id, signatureImage, method, signer.name, signer.email, ip, userAgent, CONSENT_TEXT, now);
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
+    ).run(document.id, signer.id, signatureImage, selfieImage, method, signer.name, signer.email, ip, userAgent, CONSENT_TEXT, now);
 
     db.prepare(
       `UPDATE document_signers SET status = 'signed', signed_at = ?, updated_at = datetime('now') WHERE id = ?`
@@ -179,9 +194,9 @@ signingRouter.post('/:token/complete', async (req, res) => {
     documentId: document.id,
     signerId: signer.id,
     event: AUDIT_EVENTS.SIGNATURE_COMPLETED,
-    description: `${signer.name} <${signer.email}> signed the document (${method})`,
+    description: `${signer.name} <${signer.email}> assinou o documento (assinatura ${METHOD_LABELS[method] || method})`,
     req,
-    metadata: { method },
+    metadata: { method, selfie_captured: true },
   });
   touchDocument(document.id);
 
@@ -195,20 +210,26 @@ signingRouter.post('/:token/complete', async (req, res) => {
 
   let documentCompleted = false;
   if (remaining.c === 0) {
-    logAudit({
-      documentId: document.id,
-      event: AUDIT_EVENTS.DOCUMENT_COMPLETED,
-      description: 'All signers completed. Final signed PDF generated.',
-      req,
-    });
-    const signedPath = await generateSignedPdf(document.id);
-    db.prepare(
-      `UPDATE documents
-       SET status = 'completed', signed_file_path = ?, completed_at = datetime('now'), updated_at = datetime('now')
-       WHERE id = ?`
-    ).run(signedPath, document.id);
-    documentCompleted = true;
-    notifyOwnerDocumentCompleted({ owner, document }).catch(() => {});
+    try {
+      const signedPath = await generateSignedPdf(document.id);
+      db.prepare(
+        `UPDATE documents
+         SET status = 'completed', signed_file_path = ?, completed_at = datetime('now'), updated_at = datetime('now')
+         WHERE id = ?`
+      ).run(signedPath, document.id);
+      documentCompleted = true;
+      logAudit({
+        documentId: document.id,
+        event: AUDIT_EVENTS.DOCUMENT_COMPLETED,
+        description: 'Todos os signatários concluíram. PDF final assinado gerado.',
+        req,
+      });
+      notifyOwnerDocumentCompleted({ owner, document }).catch(() => {});
+    } catch (err) {
+      // The signature itself is already saved; the final PDF will be
+      // regenerated automatically when the owner opens the document.
+      console.error('[pdf] failed to generate final signed PDF:', err);
+    }
   }
 
   res.json({ ok: true, document_completed: documentCompleted });

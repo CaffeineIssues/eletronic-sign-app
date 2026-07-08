@@ -17,7 +17,7 @@ export default function Documents() {
   useEffect(load, []);
 
   if (error) return <div className="alert alert-error">{error}</div>;
-  if (!documents) return <LoadingBlock label="Loading documents…" />;
+  if (!documents) return <LoadingBlock label="Carregando documentos…" />;
 
   const filtered = filter === 'all' ? documents : documents.filter((d) => d.status === filter);
 
@@ -25,18 +25,18 @@ export default function Documents() {
     <>
       <div className="page-header">
         <div>
-          <h1>Documents</h1>
-          <p className="subtitle">All documents you own</p>
+          <h1>Documentos</h1>
+          <p className="subtitle">Todos os documentos que você possui</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <select className="input" style={{ width: 190 }} value={filter} onChange={(e) => setFilter(e.target.value)}>
-            <option value="all">All statuses</option>
-            <option value="draft">Draft</option>
-            <option value="pending_signature">Pending signature</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
+            <option value="all">Todos os status</option>
+            <option value="draft">Rascunho</option>
+            <option value="pending_signature">Aguardando assinatura</option>
+            <option value="completed">Concluído</option>
+            <option value="cancelled">Cancelado</option>
           </select>
-          <Link to="/documents/upload" className="btn btn-primary">+ Upload</Link>
+          <Link to="/documents/upload" className="btn btn-primary">+ Enviar</Link>
         </div>
       </div>
       <div className="card">

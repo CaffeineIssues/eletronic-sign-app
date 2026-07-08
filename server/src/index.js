@@ -9,7 +9,7 @@ import { signingRouter } from './routes/signing.js';
 const app = express();
 app.set('trust proxy', true);
 app.use(cors());
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '12mb' }));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRouter);
@@ -18,14 +18,14 @@ app.use('/api/signing', signingRouter);
 
 // Central error handler (multer errors, unexpected failures).
 app.use((err, req, res, next) => {
-  if (err.message === 'Only PDF files are allowed') {
+  if (err.message === 'Apenas arquivos PDF são permitidos') {
     return res.status(422).json({ error: 'Validation failed', errors: { file: err.message } });
   }
   if (err.code === 'LIMIT_FILE_SIZE') {
-    return res.status(422).json({ error: 'Validation failed', errors: { file: 'File is too large (max 25 MB)' } });
+    return res.status(422).json({ error: 'Validation failed', errors: { file: 'O arquivo é muito grande (máx. 25 MB)' } });
   }
   console.error(err);
-  res.status(500).json({ error: 'Something went wrong' });
+  res.status(500).json({ error: 'Ocorreu um erro inesperado' });
 });
 
 app.listen(config.port, () => {
