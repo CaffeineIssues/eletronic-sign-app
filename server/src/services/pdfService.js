@@ -86,8 +86,8 @@ export async function generateSignedPdf(documentId) {
       cursorY = A4[1] - margin;
     }
   };
-  const drawLine = (text, { size = 10, font = helvetica, color = rgb(0.15, 0.15, 0.2), indent = 0, gap = 5 } = {}) => {
-    const maxWidth = A4[0] - margin * 2 - indent;
+  const drawLine = (text, { size = 10, font = helvetica, color = rgb(0.15, 0.15, 0.2), indent = 0, gap = 5, rightReserve = 0 } = {}) => {
+    const maxWidth = A4[0] - margin * 2 - indent - rightReserve;
     // Wrap manually so cursorY advances for every rendered line.
     const words = String(text).split(' ');
     const lines = [];
@@ -149,13 +149,14 @@ export async function generateSignedPdf(documentId) {
     // Keep the whole block (text + selfie) on one page.
     ensureSpace(120);
     const blockTop = cursorY;
-    drawLine(`${signer.name} <${signer.email}>`, { size: 10, font: helveticaBold, gap: 4 });
-    drawLine(`CPF: ${formatCpf(signer.cpf)}`, { indent: 14, size: 9, gap: 3 });
+    const rightReserve = sig?.selfie_image ? SELFIE_SIZE + 18 : 0;
+    drawLine(`${signer.name} <${signer.email}>`, { size: 10, font: helveticaBold, gap: 4, rightReserve });
+    drawLine(`CPF: ${formatCpf(signer.cpf)}`, { indent: 14, size: 9, gap: 3, rightReserve });
     if (sig) {
-      drawLine(`Assinado em: ${sig.signed_at} (UTC)`, { indent: 14, size: 9, gap: 3 });
-      drawLine(`Método: ${METHOD_LABELS[sig.method] || sig.method}    Endereço IP: ${sig.ip_address || 'n/d'}`, { indent: 14, size: 9, gap: 3 });
-      drawLine(`Navegador (user agent): ${(sig.user_agent || 'n/d').slice(0, 90)}`, { indent: 14, size: 9, gap: 3 });
-      drawLine(`Consentimento: ${sig.consent_given ? 'Concedido' : 'Não concedido'} — "${sig.consent_text || ''}"`, { indent: 14, size: 9, gap: 4 });
+      drawLine(`Assinado em: ${sig.signed_at} (UTC)`, { indent: 14, size: 9, gap: 3, rightReserve });
+      drawLine(`Método: ${METHOD_LABELS[sig.method] || sig.method}    Endereço IP: ${sig.ip_address || 'n/d'}`, { indent: 14, size: 9, gap: 3, rightReserve });
+      drawLine(`Navegador (user agent): ${(sig.user_agent || 'n/d').slice(0, 90)}`, { indent: 14, size: 9, gap: 3, rightReserve });
+      drawLine(`Consentimento: ${sig.consent_given ? 'Concedido' : 'Não concedido'} — "${sig.consent_text || ''}"`, { indent: 14, size: 9, gap: 4, rightReserve });
       if (sig.selfie_image) {
         try {
           const selfie = await embedDataUrlImage(sig.selfie_image);
