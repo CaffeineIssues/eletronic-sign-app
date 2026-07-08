@@ -55,20 +55,12 @@ a:hover { text-decoration: underline; }
 }
 
 .brand {
-  font-weight: 800;
-  font-size: 18px;
-  color: var(--text);
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-shrink: 0;
 }
 .brand:hover { text-decoration: none; }
-.brand-mark {
-  width: 28px; height: 28px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--primary), #8b5cf6);
-  color: #fff; display: inline-flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 800;
-}
+.brand-logo { height: 40px; display: block; }
 
 .topbar nav { display: flex; gap: 4px; flex: 1; }
 .topbar nav a {
@@ -301,6 +293,7 @@ a:hover { text-decoration: underline; }
 @media (max-width: 640px) {
   h1 { font-size: 20px; }
   .topbar { height: 54px; }
+  .brand-logo { height: 32px; }
   .topbar .user-chip span { display: none; }
   .page-header { margin-bottom: 16px; }
   .page-header > div:last-child { width: 100%; }

@@ -56,13 +56,16 @@ async function sendWhatsApp({ to, body }) {
   return { sent: true };
 }
 
+const LOGO_URL = 'https://julipet24horas.com.br/assets/logo-black-Do9LfRLl.svg';
+
 function layout(title, bodyHtml) {
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1f2937">
+    <img src="${LOGO_URL}" alt="JuliPet — Clínica Veterinária" style="height:44px;margin-bottom:20px" />
     <h2 style="color:#111827;margin-bottom:16px">${title}</h2>
     ${bodyHtml}
     <p style="color:#9ca3af;font-size:12px;margin-top:32px">
-      Esta mensagem foi enviada pelo eSign. Se você não a esperava, pode ignorá-la.
+      Esta mensagem foi enviada pela JuliPet. Se você não a esperava, pode ignorá-la.
     </p>
   </div>`;
 }

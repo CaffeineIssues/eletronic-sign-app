@@ -27,7 +27,7 @@ export const config = {
     secure: process.env.SMTP_SECURE === 'true',
     user: process.env.SMTP_USER || '',
     pass: process.env.SMTP_PASS || '',
-    from: process.env.MAIL_FROM || 'eSign App <no-reply@example.com>',
+    from: process.env.MAIL_FROM || 'JuliPet <no-reply@julipet24horas.com.br>',
   },
   d360: {
     apiKey: process.env.D360_API_KEY || '',

@@ -5,8 +5,7 @@ import { LoadingBlock } from './Spinner';
 export function Brand() {
   return (
     <Link to="/" className="brand">
-      <span className="brand-mark">eS</span>
-      eSign
+      <img src="/logo.svg" alt="JuliPet — Clínica Veterinária" className="brand-logo" />
     </Link>
   );
 }
